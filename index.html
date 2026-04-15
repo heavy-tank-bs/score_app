@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>草野球スコアアプリ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark px-3 py-2">
+  <span class="navbar-brand"><i class="bi bi-trophy-fill me-2"></i>草野球スコアアプリ</span>
+  <div class="d-flex gap-2">
+    <a href="index.html"     class="nav-link text-white active small">ホーム</a>
+    <a href="dashboard.html" class="nav-link text-white small">ダッシュボード</a>
+  </div>
+</nav>
+
+<div class="container py-3">
+
+  <!-- Team Name -->
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-shield-fill me-1"></i>チーム設定</span>
+    </div>
+    <div class="card-body">
+      <div class="d-flex gap-2">
+        <input id="teamNameInput" type="text" class="form-control" placeholder="チーム名">
+        <button class="btn btn-primary btn-sm px-3" onclick="saveTeamName()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Players -->
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-people-fill me-1"></i>選手管理</span>
+      <button class="btn btn-sm btn-light" onclick="toggleAddPlayer()">
+        <i class="bi bi-plus-lg"></i> 追加
+      </button>
+    </div>
+    <div class="card-body">
+      <!-- Add Player Form -->
+      <div id="addPlayerForm" class="border rounded p-3 mb-3 bg-light" style="display:none">
+        <div class="row g-2 mb-2">
+          <div class="col-4">
+            <input id="pNumber" type="number" class="form-control form-control-sm" placeholder="背番号" min="0">
+          </div>
+          <div class="col-8">
+            <input id="pName" type="text" class="form-control form-control-sm" placeholder="選手名（必須）">
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <select id="pBats" class="form-select form-select-sm">
+              <option value="">打席</option>
+              <option value="右">右打</option>
+              <option value="左">左打</option>
+              <option value="両">両打</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <select id="pThrows" class="form-select form-select-sm">
+              <option value="">投球</option>
+              <option value="右">右投</option>
+              <option value="左">左投</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-2 d-flex gap-2">
+          <button class="btn btn-primary btn-sm" onclick="addPlayer()">追加</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleAddPlayer()">キャンセル</button>
+        </div>
+      </div>
+
+      <!-- Player List -->
+      <div id="playerList">
+        <div class="empty-msg">選手が登録されていません</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Games -->
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-calendar3 me-1"></i>試合一覧</span>
+      <button class="btn btn-sm btn-light" onclick="newGame()">
+        <i class="bi bi-plus-lg"></i> 新規試合
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div id="gameList">
+        <div class="empty-msg py-4">試合が記録されていません</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Operations -->
+  <div class="card">
+    <div class="card-header"><i class="bi bi-database me-1"></i>データ管理</div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary btn-sm" onclick="Storage.exportJSON()">
+          <i class="bi bi-download me-1"></i>JSON書き出し
+        </button>
+        <label class="btn btn-outline-secondary btn-sm mb-0">
+          <i class="bi bi-upload me-1"></i>JSON読み込み
+          <input type="file" accept=".json" style="display:none" onchange="importJSON(this)">
+        </label>
+        <button class="btn btn-outline-success btn-sm" onclick="exportCSV('batting')">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>打撃CSV
+        </button>
+        <button class="btn btn-outline-success btn-sm" onclick="exportCSV('pitching')">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>投手CSV
+        </button>
+        <button class="btn btn-warning btn-sm" onclick="loadSampleData()">
+          <i class="bi bi-stars me-1"></i>サンプルデータ
+        </button>
+      </div>
+      <p class="text-muted small mt-2 mb-0">
+        <i class="bi bi-info-circle me-1"></i>データはブラウザに保存されます。バックアップはJSON書き出しをご利用ください。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- New Game Modal -->
+<div class="modal fade" id="gameModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--primary);color:#fff">
+        <h6 class="modal-title mb-0"><i class="bi bi-plus-circle me-2"></i>新規試合</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">日付 <span class="text-danger">*</span></label>
+          <input id="gDate" type="date" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">相手チーム名 <span class="text-danger">*</span></label>
+          <input id="gOpponent" type="text" class="form-control" placeholder="相手チーム">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">球場</label>
+          <input id="gVenue" type="text" class="form-control" placeholder="球場名（任意）">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">ホーム/アウェイ</label>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="homeAway" id="rHome" value="home" checked>
+              <label class="form-check-label" for="rHome">ホーム（後攻）</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="homeAway" id="rAway" value="away">
+              <label class="form-check-label" for="rAway">アウェイ（先攻）</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick="createGame()">作成してスタメン登録へ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container">
+  <div id="toast" class="toast align-items-center text-white border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMsg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/stats.js"></script>
+<script>
+// ===== 初期化 =====
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('teamNameInput').value = Storage.getTeamName();
+  renderPlayers();
+  renderGames();
+  // 日付デフォルト
+  document.getElementById('gDate').value = new Date().toISOString().slice(0, 10);
+});
+
+function showToast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.className = `toast align-items-center text-white border-0 bg-${type}`;
+  document.getElementById('toastMsg').textContent = msg;
+  bootstrap.Toast.getOrCreateInstance(el, { delay: 2500 }).show();
+}
+
+// ===== チーム名 =====
+function saveTeamName() {
+  const name = document.getElementById('teamNameInput').value.trim();
+  if (!name) return;
+  Storage.setTeamName(name);
+  showToast('チーム名を保存しました');
+}
+
+// ===== 選手管理 =====
+function toggleAddPlayer() {
+  const form = document.getElementById('addPlayerForm');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    document.getElementById('pName').focus();
+  }
+}
+
+function addPlayer() {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) { alert('選手名を入力してください'); return; }
+  const player = {
+    name,
+    number: document.getElementById('pNumber').value || '',
+    bats:   document.getElementById('pBats').value,
+    throws: document.getElementById('pThrows').value
+  };
+  Storage.addPlayer(player);
+  document.getElementById('pName').value   = '';
+  document.getElementById('pNumber').value = '';
+  renderPlayers();
+  showToast(`${name} を追加しました`);
+}
+
+function deletePlayer(id, name) {
+  if (!confirm(`${name} を削除しますか？`)) return;
+  Storage.deletePlayer(id);
+  renderPlayers();
+}
+
+function renderPlayers() {
+  const players = Storage.getPlayers();
+  const el = document.getElementById('playerList');
+  if (!players.length) {
+    el.innerHTML = '<div class="empty-msg">選手が登録されていません</div>';
+    return;
+  }
+  el.innerHTML = players.map(p => `
+    <div class="d-flex align-items-center px-3 py-2 border-bottom">
+      <span class="fw-bold me-2 text-muted" style="min-width:28px;font-size:.85rem">#${p.number || '-'}</span>
+      <span class="flex-grow-1">${p.name}</span>
+      ${p.bats   ? `<span class="badge bg-secondary me-1" style="font-size:.7rem">${p.bats}打</span>` : ''}
+      ${p.throws ? `<span class="badge bg-secondary me-1" style="font-size:.7rem">${p.throws}投</span>` : ''}
+      <button class="btn btn-sm btn-outline-danger ms-2" onclick="deletePlayer('${p.id}','${p.name}')">
+        <i class="bi bi-trash3"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// ===== 試合管理 =====
+function newGame() {
+  document.getElementById('gDate').value     = new Date().toISOString().slice(0, 10);
+  document.getElementById('gOpponent').value = '';
+  document.getElementById('gVenue').value    = '';
+  document.getElementById('rHome').checked   = true;
+  new bootstrap.Modal(document.getElementById('gameModal')).show();
+}
+
+function createGame() {
+  const date     = document.getElementById('gDate').value;
+  const opponent = document.getElementById('gOpponent').value.trim();
+  if (!date || !opponent) { alert('日付と相手チーム名は必須です'); return; }
+  const isHome   = document.querySelector('input[name="homeAway"]:checked').value === 'home';
+  const game     = Storage.createGame({ date, opponent, venue: document.getElementById('gVenue').value.trim(), isHome });
+  bootstrap.Modal.getInstance(document.getElementById('gameModal')).hide();
+  window.location.href = `game.html?id=${game.id}`;
+}
+
+function deleteGame(id, name) {
+  if (!confirm(`「${name}」の試合データを削除しますか？`)) return;
+  Storage.deleteGame(id);
+  renderGames();
+}
+
+function renderGames() {
+  const games = Storage.getGames().slice().reverse();
+  const el = document.getElementById('gameList');
+  if (!games.length) {
+    el.innerHTML = '<div class="empty-msg py-4">試合が記録されていません</div>';
+    return;
+  }
+  const myTeam = Storage.getTeamName();
+  el.innerHTML = games.map(g => {
+    const sc = Stats.gameScore(g);
+    const score = g.status === 'completed'
+      ? `<span class="fw-bold">${sc.my} - ${sc.opp}</span>`
+      : `<span class="badge bg-secondary">記録中</span>`;
+    const statusBadge = g.status === 'completed'
+      ? (sc.my > sc.opp ? '<span class="badge bg-success ms-1">勝</span>'
+          : sc.my < sc.opp ? '<span class="badge bg-danger ms-1">負</span>'
+          : '<span class="badge bg-secondary ms-1">引</span>')
+      : '';
+    return `
+      <div class="d-flex align-items-center px-3 py-2 border-bottom">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">${g.date} vs ${g.opponent} ${statusBadge}</div>
+          <div class="text-muted small">${g.venue ? g.venue + ' / ' : ''}${g.isHome ? 'ホーム' : 'アウェイ'} ${score}</div>
+        </div>
+        <div class="d-flex gap-1">
+          <a href="game.html?id=${g.id}" class="btn btn-sm btn-primary">
+            <i class="bi bi-pencil-fill"></i>
+          </a>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteGame('${g.id}','${g.date} vs ${g.opponent}')">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ===== Import/Export =====
+async function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    await Storage.importJSON(file);
+    showToast('データを読み込みました');
+    document.getElementById('teamNameInput').value = Storage.getTeamName();
+    renderPlayers();
+    renderGames();
+  } catch(e) {
+    showToast('読み込みに失敗しました', 'danger');
+  }
+  input.value = '';
+}
+
+function exportCSV(type) {
+  const data = Storage.get();
+  let content, filename;
+  if (type === 'batting') {
+    const stats = Stats.getAllBatting(data);
+    const header = ['選手名','背番号','試合','打席','打数','安打','二塁打','三塁打','本塁打','打点','四球','死球','三振','打率','出塁率','長打率','OPS','IsoP','IsoD'];
+    const rows = stats.map(s => [
+      s.name, s.number||'', s.games, s.pa, s.ab, s.h, s.s2b, s.s3b, s.hr,
+      s.rbi, s.bb, s.hbp, s.k,
+      Stats.fmt(s.avg), Stats.fmt(s.obp), Stats.fmt(s.slg), Stats.fmt(s.ops),
+      Stats.fmt(s.isoP), Stats.fmt(s.isoD)
+    ]);
+    content  = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    filename = `batting_${new Date().toISOString().slice(0,10)}.csv`;
+  } else {
+    const stats = Stats.getAllPitching(data);
+    const header = ['選手名','背番号','登板','勝','負','S','投球回','被安打','奪三振','四球','死球','失点','自責点','ERA'];
+    const rows = stats.map(s => [
+      s.name, s.number||'', s.games, s.wins, s.losses, s.saves,
+      s.ip, s.hits, s.k, s.bb, s.hbp, s.r, s.er,
+      s.era != null ? s.era.toFixed(2) : '-'
+    ]);
+    content  = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    filename = `pitching_${new Date().toISOString().slice(0,10)}.csv`;
+  }
+  Storage.downloadCSV(content, filename);
+}
+
+// ===== サンプルデータ =====
+function loadSampleData() {
+  if (!confirm('サンプルデータを読み込みますか？\n現在のデータは上書きされます。')) return;
+
+  const data = {
+    myTeamName: 'TKOベアーズ',
+    players: [
+      { id:'s_p1', name:'山田 太郎', number:'1',  bats:'右', throws:'右' },
+      { id:'s_p2', name:'佐藤 次郎', number:'7',  bats:'左', throws:'右' },
+      { id:'s_p3', name:'鈴木 三郎', number:'23', bats:'右', throws:'右' },
+      { id:'s_p4', name:'田中 四郎', number:'4',  bats:'右', throws:'右' },
+      { id:'s_p5', name:'渡辺 五郎', number:'15', bats:'右', throws:'左' },
+      { id:'s_p6', name:'伊藤 六郎', number:'6',  bats:'右', throws:'右' },
+      { id:'s_p7', name:'中村 七郎', number:'3',  bats:'両', throws:'右' },
+      { id:'s_p8', name:'小林 八郎', number:'8',  bats:'右', throws:'右' },
+      { id:'s_p9', name:'加藤 九郎', number:'21', bats:'右', throws:'右' }
+    ],
+    games: [
+      // ===== 試合1: 4/5 vs 港南ファイターズ (ホーム勝利 5-2) =====
+      {
+        id:'s_g1', date:'2026-04-05', opponent:'港南ファイターズ',
+        venue:'市民野球場', isHome:true, status:'completed',
+        myLineup: [
+          {order:1,playerId:'s_p1',position:'CF'},{order:2,playerId:'s_p2',position:'SS'},
+          {order:3,playerId:'s_p3',position:'1B'},{order:4,playerId:'s_p4',position:'LF'},
+          {order:5,playerId:'s_p5',position:'C'}, {order:6,playerId:'s_p6',position:'3B'},
+          {order:7,playerId:'s_p7',position:'RF'},{order:8,playerId:'s_p8',position:'2B'},
+          {order:9,playerId:'s_p9',position:'P'}
+        ],
+        oppLineup: [
+          {order:1,name:'川上',position:'CF'},{order:2,name:'松本',position:'SS'},
+          {order:3,name:'清水',position:'1B'},{order:4,name:'青山',position:'LF'},
+          {order:5,name:'藤田',position:'C'}, {order:6,name:'石川',position:'3B'},
+          {order:7,name:'橋本',position:'RF'},{order:8,name:'近藤',position:'2B'},
+          {order:9,name:'斉藤',position:'P'}
+        ],
+        innings: { my:[0,2,0,1,0,2,0,0,0], opp:[0,0,1,0,0,0,1,0,0] },
+        atBats: [
+          // 1回
+          {id:'ab001',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab002',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab003',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'FO', direction:'RF', rbi:0,note:''},
+          {id:'ab004',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'K',  direction:null, rbi:0,note:''},
+          // 2回
+          {id:'ab005',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'1B', direction:'LF', rbi:0,note:''},
+          {id:'ab006',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'2B', direction:'RC', rbi:1,note:'タイムリー二塁打'},
+          {id:'ab007',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'1B', direction:'CF', rbi:1,note:''},
+          {id:'ab008',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'GO', direction:'1B', rbi:0,note:''},
+          {id:'ab009',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'KL', direction:null, rbi:0,note:''},
+          // 3回
+          {id:'ab010',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'FO', direction:'CF', rbi:0,note:''},
+          {id:'ab011',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'1B', direction:'SS', rbi:0,note:''},
+          {id:'ab012',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab013',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'FO', direction:'LF', rbi:0,note:''},
+          // 4回
+          {id:'ab014',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'HBP',direction:null, rbi:0,note:''},
+          {id:'ab015',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'SAC',direction:'P',  rbi:0,note:''},
+          {id:'ab016',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'1B', direction:'RC', rbi:1,note:'タイムリー'},
+          {id:'ab017',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'KL', direction:null, rbi:0,note:''},
+          {id:'ab018',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'GO', direction:'3B', rbi:0,note:''},
+          // 5回
+          {id:'ab019',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab020',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab021',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab022',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'FO', direction:'RF', rbi:0,note:''},
+          // 6回
+          {id:'ab023',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'HR', direction:'LC', rbi:2,note:'2ランホームラン'},
+          {id:'ab024',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab025',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab026',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'FO', direction:'CF', rbi:0,note:''},
+          // 7回
+          {id:'ab027',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'GO', direction:'P',  rbi:0,note:''},
+          {id:'ab028',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'1B', direction:'RF', rbi:0,note:''},
+          {id:'ab029',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'KL', direction:null, rbi:0,note:''},
+          {id:'ab030',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'K',  direction:null, rbi:0,note:''},
+          // 8・9回
+          {id:'ab031',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'2B', direction:'LF', rbi:0,note:''},
+          {id:'ab032',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab033',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'FO', direction:'CF', rbi:0,note:''},
+          {id:'ab034',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'GO', direction:'1B', rbi:0,note:''},
+          {id:'ab035',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'1B', direction:'LF', rbi:0,note:''},
+          {id:'ab036',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'KL', direction:null, rbi:0,note:''}
+        ],
+        pitching: [
+          {id:'pit001',isMyTeam:true, playerId:'s_p9',pitcherName:'加藤 九郎',
+           innings:'9',win:true, loss:false,save:false,hits:5,strikeouts:7,walks:2,hbp:0,runs:2,earnedRuns:2},
+          {id:'pit002',isMyTeam:false,playerId:null, pitcherName:'斉藤',
+           innings:'9',win:false,loss:true, save:false,hits:8,strikeouts:5,walks:3,hbp:1,runs:5,earnedRuns:5}
+        ]
+      },
+
+      // ===== 試合2: 4/12 vs 東部ライオンズ (アウェイ負け 3-6) =====
+      {
+        id:'s_g2', date:'2026-04-12', opponent:'東部ライオンズ',
+        venue:'東部公園球場', isHome:false, status:'completed',
+        myLineup: [
+          {order:1,playerId:'s_p2',position:'CF'},{order:2,playerId:'s_p1',position:'SS'},
+          {order:3,playerId:'s_p4',position:'1B'},{order:4,playerId:'s_p5',position:'LF'},
+          {order:5,playerId:'s_p3',position:'3B'},{order:6,playerId:'s_p6',position:'C'},
+          {order:7,playerId:'s_p7',position:'RF'},{order:8,playerId:'s_p8',position:'2B'},
+          {order:9,playerId:'s_p9',position:'P'}
+        ],
+        oppLineup: [
+          {order:1,name:'荒木',position:'CF'},{order:2,name:'木村',position:'SS'},
+          {order:3,name:'高橋',position:'1B'},{order:4,name:'坂本',position:'LF'},
+          {order:5,name:'前田',position:'3B'},{order:6,name:'大野',position:'C'},
+          {order:7,name:'福田',position:'RF'},{order:8,name:'池田',position:'2B'},
+          {order:9,name:'村田',position:'P'}
+        ],
+        innings: { my:[1,0,0,2,0,0,0,0,0], opp:[0,2,0,0,1,0,3,0,0] },
+        atBats: [
+          {id:'ab101',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'1B', direction:'LF', rbi:0,note:''},
+          {id:'ab102',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'1B', direction:'CF', rbi:1,note:''},
+          {id:'ab103',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab104',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab105',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'FO', direction:'RF', rbi:0,note:''},
+          {id:'ab106',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab107',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'FO', direction:'LF', rbi:0,note:''},
+          {id:'ab108',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab109',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'KL', direction:null, rbi:0,note:''},
+          {id:'ab110',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab111',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'FO', direction:'CF', rbi:0,note:''},
+          {id:'ab112',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab113',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'2B', direction:'LC', rbi:0,note:''},
+          {id:'ab114',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'HR', direction:'CF', rbi:2,note:'センター越え2ラン'},
+          {id:'ab115',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'FO', direction:'RF', rbi:0,note:''},
+          {id:'ab116',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'GO', direction:'3B', rbi:0,note:''},
+          {id:'ab117',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'1B', direction:'SS', rbi:0,note:''},
+          {id:'ab118',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'GO', direction:'P',  rbi:0,note:''},
+          {id:'ab119',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab120',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab121',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'FO', direction:'LF', rbi:0,note:''},
+          {id:'ab122',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'1B', direction:'RF', rbi:0,note:''},
+          {id:'ab123',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab124',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'FO', direction:'CF', rbi:0,note:''}
+        ],
+        pitching: [
+          {id:'pit101',isMyTeam:true, playerId:'s_p9',pitcherName:'加藤 九郎',
+           innings:'6',win:false,loss:false,save:false,hits:7,strikeouts:4,walks:3,hbp:0,runs:3,earnedRuns:3},
+          {id:'pit102',isMyTeam:true, playerId:'s_p7',pitcherName:'中村 七郎',
+           innings:'3',win:false,loss:true, save:false,hits:4,strikeouts:2,walks:1,hbp:0,runs:3,earnedRuns:3},
+          {id:'pit103',isMyTeam:false,playerId:null, pitcherName:'村田',
+           innings:'9',win:true, loss:false,save:false,hits:6,strikeouts:8,walks:2,hbp:0,runs:3,earnedRuns:3}
+        ]
+      },
+
+      // ===== 試合3: 4/19 vs 西川グリズリーズ (ホーム勝利 8-1) =====
+      {
+        id:'s_g3', date:'2026-04-19', opponent:'西川グリズリーズ',
+        venue:'市民野球場', isHome:true, status:'completed',
+        myLineup: [
+          {order:1,playerId:'s_p1',position:'CF'},{order:2,playerId:'s_p2',position:'SS'},
+          {order:3,playerId:'s_p3',position:'1B'},{order:4,playerId:'s_p4',position:'LF'},
+          {order:5,playerId:'s_p5',position:'C'}, {order:6,playerId:'s_p6',position:'3B'},
+          {order:7,playerId:'s_p7',position:'RF'},{order:8,playerId:'s_p8',position:'2B'},
+          {order:9,playerId:'s_p9',position:'P'}
+        ],
+        oppLineup: [
+          {order:1,name:'西田',position:'CF'},{order:2,name:'原田',position:'SS'},
+          {order:3,name:'森田',position:'1B'},{order:4,name:'中田',position:'LF'},
+          {order:5,name:'岡田',position:'3B'},{order:6,name:'吉田',position:'C'},
+          {order:7,name:'松田',position:'RF'},{order:8,name:'野田',position:'2B'},
+          {order:9,name:'桶田',position:'P'}
+        ],
+        innings: { my:[3,0,2,0,1,0,2,0,0], opp:[1,0,0,0,0,0,0,0,0] },
+        atBats: [
+          // 1回 (3点)
+          {id:'ab201',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'1B', direction:'RC', rbi:0,note:''},
+          {id:'ab202',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab203',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'2B', direction:'LF', rbi:2,note:'タイムリー二塁打'},
+          {id:'ab204',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'1B', direction:'SS', rbi:1,note:''},
+          {id:'ab205',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab206',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'FO', direction:'RF', rbi:0,note:''},
+          {id:'ab207',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'FO', direction:'LF', rbi:0,note:''},
+          // 2回
+          {id:'ab208',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab209',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'KL', direction:null, rbi:0,note:''},
+          {id:'ab210',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'K',  direction:null, rbi:0,note:''},
+          // 3回 (2点)
+          {id:'ab211',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'1B', direction:'LC', rbi:0,note:''},
+          {id:'ab212',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'HR', direction:'RC', rbi:2,note:'右中間2ラン'},
+          {id:'ab213',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'FO', direction:'CF', rbi:0,note:''},
+          {id:'ab214',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab215',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'GO', direction:'3B', rbi:0,note:''},
+          // 4回
+          {id:'ab216',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'1B', direction:'RF', rbi:0,note:''},
+          {id:'ab217',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'SAC',direction:'P',  rbi:0,note:''},
+          {id:'ab218',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'GO', direction:'SS', rbi:0,note:''},
+          {id:'ab219',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'FO', direction:'LF', rbi:0,note:''},
+          // 5回 (1点)
+          {id:'ab220',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'2B', direction:'LC', rbi:0,note:''},
+          {id:'ab221',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'1B', direction:'SS', rbi:1,note:'タイムリー'},
+          {id:'ab222',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab223',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'FO', direction:'RF', rbi:0,note:''},
+          // 6回
+          {id:'ab224',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab225',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'GO', direction:'2B', rbi:0,note:''},
+          {id:'ab226',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'FO', direction:'CF', rbi:0,note:''},
+          // 7回 (2点)
+          {id:'ab227',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'GO', direction:'P',  rbi:0,note:''},
+          {id:'ab228',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'3B', direction:'LC', rbi:0,note:'左中間三塁打'},
+          {id:'ab229',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'SF', direction:'LF', rbi:1,note:'犠飛'},
+          {id:'ab230',isMyTeam:true,playerId:'s_p3',playerName:'鈴木 三郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab231',isMyTeam:true,playerId:'s_p4',playerName:'田中 四郎',result:'1B', direction:'RF', rbi:1,note:'タイムリー'},
+          {id:'ab232',isMyTeam:true,playerId:'s_p5',playerName:'渡辺 五郎',result:'FO', direction:'CF', rbi:0,note:''},
+          // 8・9回
+          {id:'ab233',isMyTeam:true,playerId:'s_p6',playerName:'伊藤 六郎',result:'GO', direction:'1B', rbi:0,note:''},
+          {id:'ab234',isMyTeam:true,playerId:'s_p7',playerName:'中村 七郎',result:'FO', direction:'RF', rbi:0,note:''},
+          {id:'ab235',isMyTeam:true,playerId:'s_p8',playerName:'小林 八郎',result:'K',  direction:null, rbi:0,note:''},
+          {id:'ab236',isMyTeam:true,playerId:'s_p9',playerName:'加藤 九郎',result:'BB', direction:null, rbi:0,note:''},
+          {id:'ab237',isMyTeam:true,playerId:'s_p1',playerName:'山田 太郎',result:'1B', direction:'CF', rbi:0,note:''},
+          {id:'ab238',isMyTeam:true,playerId:'s_p2',playerName:'佐藤 次郎',result:'GO', direction:'SS', rbi:0,note:''}
+        ],
+        pitching: [
+          {id:'pit201',isMyTeam:true, playerId:'s_p9',pitcherName:'加藤 九郎',
+           innings:'9',win:true, loss:false,save:false,hits:3,strikeouts:9,walks:1,hbp:0,runs:1,earnedRuns:1},
+          {id:'pit202',isMyTeam:false,playerId:null, pitcherName:'桶田',
+           innings:'4',win:false,loss:false,save:false,hits:6,strikeouts:2,walks:3,hbp:0,runs:5,earnedRuns:5},
+          {id:'pit203',isMyTeam:false,playerId:null, pitcherName:'交代投手',
+           innings:'5',win:false,loss:true, save:false,hits:4,strikeouts:3,walks:0,hbp:0,runs:3,earnedRuns:3}
+        ]
+      }
+    ]
+  };
+
+  Storage.save(data);
+  document.getElementById('teamNameInput').value = data.myTeamName;
+  renderPlayers();
+  renderGames();
+  showToast('サンプルデータを読み込みました！ダッシュボードで確認できます');
+}
+</script>
+</body>
+</html>

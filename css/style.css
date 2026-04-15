@@ -1,0 +1,326 @@
+/* ===== ベースボールスコアアプリ スタイル ===== */
+:root {
+  --primary:       #1a472a;
+  --primary-light: #2d6a4f;
+  --primary-pale:  #d4edda;
+  --accent:        #f4a261;
+  --danger:        #dc3545;
+  --success:       #198754;
+  --info:          #0dcaf0;
+  --warn:          #ffc107;
+  --bg:            #f0f4f8;
+  --card:          #ffffff;
+  --border:        #dee2e6;
+  --text:          #212529;
+  --muted:         #6c757d;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding-bottom: 60px;
+}
+
+/* ===== Navbar ===== */
+.navbar {
+  background: var(--primary) !important;
+}
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+}
+.nav-link.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ===== Buttons ===== */
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background: var(--primary-light);
+  border-color: var(--primary-light);
+}
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.btn-outline-primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ===== Cards ===== */
+.card {
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  border-radius: 10px;
+}
+.card-header {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 10px 10px 0 0 !important;
+  font-weight: 600;
+  padding: 10px 16px;
+}
+
+/* ===== Steps ===== */
+.step-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--border);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.step-circle.active  { background: var(--primary); color: #fff; }
+.step-circle.done    { background: var(--success);  color: #fff; }
+.step-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.step-label.active { color: var(--primary); font-weight: 600; }
+.step-sep {
+  color: var(--border);
+  font-size: 0.8rem;
+}
+
+/* ===== Score Board ===== */
+.scoreboard {
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  width: 100%;
+  overflow-x: auto;
+}
+.scoreboard th,
+.scoreboard td {
+  border: 1px solid var(--border);
+  text-align: center;
+  padding: 4px 6px;
+  min-width: 30px;
+}
+.scoreboard th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+.scoreboard .team-name {
+  text-align: left;
+  min-width: 80px;
+  font-weight: 600;
+}
+.scoreboard .total {
+  background: #f8f9fa;
+  font-weight: 700;
+}
+.score-input {
+  width: 38px;
+  text-align: center;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+}
+
+/* ===== Result Buttons ===== */
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+@media (max-width: 400px) {
+  .result-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.result-btn {
+  padding: 10px 2px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  line-height: 1.2;
+}
+.result-btn:hover  { background: #f5f5f5; }
+.result-btn.active { color: #fff; border-color: transparent; }
+.result-btn.hit    { border-color: #198754; color: #198754; }
+.result-btn.hit.active  { background: #198754; }
+.result-btn.hr     { border-color: #dc3545; color: #dc3545; }
+.result-btn.hr.active   { background: #dc3545; }
+.result-btn.walk   { border-color: #0d6efd; color: #0d6efd; }
+.result-btn.walk.active  { background: #0d6efd; }
+.result-btn.out    { border-color: #6c757d; color: #6c757d; }
+.result-btn.out.active   { background: #6c757d; }
+.result-btn.special{ border-color: #fd7e14; color: #fd7e14; }
+.result-btn.special.active { background: #fd7e14; }
+
+/* ===== Direction / Spray Chart ===== */
+.spray-svg {
+  width: 100%;
+  max-width: 300px;
+  display: block;
+  margin: 0 auto;
+  cursor: pointer;
+}
+.spray-zone {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.spray-zone:hover { opacity: 0.75; }
+.spray-zone.selected-zone { stroke: #ffd700; stroke-width: 3; }
+
+/* ===== Stats Tables ===== */
+.stats-table {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.stats-table th {
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.stats-table td,
+.stats-table th {
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+.stats-table .leader { font-weight: 700; color: var(--primary); }
+
+/* ===== At-bat List ===== */
+.ab-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ab-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.ab-list li:last-child { border-bottom: none; }
+.ab-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+.badge-1B   { background: #198754; }
+.badge-2B   { background: #0d6efd; }
+.badge-3B   { background: #fd7e14; }
+.badge-HR   { background: #dc3545; }
+.badge-BB   { background: #6f42c1; }
+.badge-HBP  { background: #20c997; }
+.badge-K,
+.badge-KL   { background: #6c757d; }
+.badge-GO,
+.badge-FO,
+.badge-LO   { background: #adb5bd; color: #333; }
+.badge-SAC,
+.badge-SF   { background: #ffc107; color: #333; }
+.badge-E,
+.badge-FC,
+.badge-GIDP { background: #e9ecef; color: #555; }
+
+/* ===== Ranking Chart ===== */
+.chart-container {
+  position: relative;
+  height: 300px;
+}
+
+/* ===== Lineup Table ===== */
+.lineup-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 90px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.lineup-row .order-label {
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: center;
+  color: var(--primary);
+}
+
+/* ===== Mobile tweaks ===== */
+@media (max-width: 576px) {
+  .card-body { padding: 12px; }
+  h5 { font-size: 1rem; }
+}
+
+/* ===== Dashboard Spray ===== */
+.spray-full-svg {
+  width: 100%;
+  max-width: 360px;
+  display: block;
+  margin: 0 auto;
+}
+.spray-dot {
+  opacity: 0.82;
+}
+
+/* ===== Tab styling ===== */
+.nav-tabs .nav-link {
+  font-size: 0.9rem;
+  padding: 6px 14px;
+}
+.nav-tabs .nav-link.active {
+  font-weight: 600;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+}
+
+/* ===== Misc ===== */
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.empty-msg {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 0;
+  font-size: 0.9rem;
+}
