@@ -80,9 +80,26 @@
       </div>
     </div>
 
+    <!-- Scorecard Grid (Opponent Team) -->
+    <div class="card mb-2">
+      <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:#495057">
+        <span><i class="bi bi-table me-1"></i>打席記録（相手：<span id="recOpponentSc"></span>）</span>
+      </div>
+      <div class="card-body p-0" style="overflow-x:auto">
+        <table id="oppScorecardTable" class="scorecard-table"></table>
+      </div>
+    </div>
+
     <!-- Score Board -->
     <div class="card mb-2">
-      <div class="card-header py-2"><i class="bi bi-grid me-1"></i>スコアボード</div>
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-grid me-1"></i>スコアボード</span>
+        <div class="d-flex align-items-center gap-2">
+          <button class="inn-btn" style="border-color:rgba(255,255,255,0.8);color:#fff" onclick="changeInnings(-1)">－</button>
+          <span id="scoreInnDisplay" class="fw-bold text-white small" style="min-width:28px;text-align:center">7回</span>
+          <button class="inn-btn" style="border-color:rgba(255,255,255,0.8);color:#fff" onclick="changeInnings(1)">＋</button>
+        </div>
+      </div>
       <div class="card-body p-2">
         <div class="table-responsive">
           <table class="scoreboard" id="scoreboard">
@@ -99,11 +116,19 @@
       </div>
     </div>
 
-    <!-- Pitcher Assignment (Auto Stats) -->
+    <!-- Pitcher Assignment (My Team) -->
     <div class="card mb-2">
       <div class="card-header py-2"><i class="bi bi-person-badge me-1"></i>投手記録（自チーム）</div>
       <div class="card-body p-2" id="pitcherAssignmentArea">
         <p class="text-muted small mb-0">スコアボードを保存してからイニングごとに投手を選択してください</p>
+      </div>
+    </div>
+
+    <!-- Pitcher Assignment (Opponent) -->
+    <div class="card mb-2">
+      <div class="card-header py-2" style="background:#495057;color:#fff"><i class="bi bi-person-badge me-1"></i>投手記録（相手チーム）</div>
+      <div class="card-body p-2" id="oppPitcherAssignmentArea">
+        <p class="text-muted small mb-0">「先発投手を追加」ボタンで相手投手を登録してください</p>
       </div>
     </div>
 
@@ -235,6 +260,7 @@
           <select id="subPlayerSel" class="form-select">
             <option value="">選択してください</option>
           </select>
+          <input id="subPlayerText" type="text" class="form-control mt-1" placeholder="選手名を入力" style="display:none">
         </div>
         <div class="mb-1">
           <label class="form-label fw-semibold">登場イニング（回）</label>
