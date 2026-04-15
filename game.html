@@ -13,9 +13,7 @@
 <!-- Navbar -->
 <nav class="navbar navbar-dark px-3 py-2">
   <a href="index.html" class="navbar-brand"><i class="bi bi-arrow-left me-1"></i>草野球スコアアプリ</a>
-  <div class="d-flex gap-2">
-    <a href="dashboard.html" class="nav-link text-white small">ダッシュボード</a>
-  </div>
+  <a href="dashboard.html" class="nav-link text-white small">ダッシュボード</a>
 </nav>
 
 <div class="container py-3">
@@ -42,125 +40,77 @@
         </button>
       </div>
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-primary w-100" onclick="saveLineupAndGo()">
-        <i class="bi bi-arrow-right-circle me-1"></i>スタメン確定・試合記録へ
-      </button>
-    </div>
+    <button class="btn btn-primary w-100" onclick="saveLineupAndGo()">
+      <i class="bi bi-arrow-right-circle me-1"></i>スタメン確定・試合記録へ
+    </button>
   </div>
 
   <!-- ===== STEP 2: 試合記録 ===== -->
   <div id="stepRecord" style="display:none">
+
     <!-- Game Info Header -->
-    <div class="card mb-3">
+    <div class="card mb-2">
       <div class="card-body py-2 px-3">
         <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <span class="fw-bold" id="recTeamName"></span>
-            <span class="mx-2 text-muted">vs</span>
-            <span class="fw-bold" id="recOpponent"></span>
+          <div class="fw-semibold">
+            <span id="recTeamName"></span>
+            <span class="mx-1 text-muted">vs</span>
+            <span id="recOpponent"></span>
           </div>
-          <div class="d-flex align-items-center gap-3">
-            <span class="fs-4 fw-bold" id="recScore"></span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-4 fw-bold" id="recScore">0-0</span>
             <span class="text-muted small" id="recDate"></span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <ul class="nav nav-tabs mb-3" id="recTabs">
-      <li class="nav-item">
-        <a class="nav-link active" href="#" onclick="showTab('atbat');return false">
-          <i class="bi bi-bat me-1"></i>打席
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#" onclick="showTab('score');return false">
-          <i class="bi bi-grid me-1"></i>スコア
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#" onclick="showTab('pitching');return false">
-          <i class="bi bi-person-badge me-1"></i>投手
-        </a>
-      </li>
-    </ul>
-
-    <!-- TAB: 打席記録 -->
-    <div id="tabAtbat">
-      <div class="d-flex gap-2 mb-3">
-        <button class="btn btn-primary flex-fill" onclick="openAtbatModal(null,'my')">
-          <i class="bi bi-plus-circle me-1"></i>自チーム打席
-        </button>
-        <button class="btn btn-outline-secondary flex-fill" onclick="openAtbatModal(null,'opp')">
-          <i class="bi bi-plus-circle me-1"></i>相手打席
-        </button>
-      </div>
-      <div class="card">
-        <div class="card-body p-0">
-          <ul class="ab-list" id="atbatList">
-            <li class="empty-msg py-3">打席が記録されていません</li>
-          </ul>
+    <!-- Scorecard Grid (My Team) -->
+    <div class="card mb-2">
+      <div class="card-header d-flex align-items-center justify-content-between py-2">
+        <span><i class="bi bi-table me-1"></i>打席記録（自チーム）</span>
+        <div class="d-flex align-items-center gap-2">
+          <button class="inn-btn" onclick="changeInnings(-1)" title="イニングを減らす">－</button>
+          <span id="inningCountDisplay" class="fw-bold" style="min-width:32px;text-align:center">7回</span>
+          <button class="inn-btn" onclick="changeInnings(1)" title="イニングを増やす">＋</button>
         </div>
+      </div>
+      <div class="card-body p-0" style="overflow-x:auto">
+        <table id="scorecardTable" class="scorecard-table"></table>
       </div>
     </div>
 
-    <!-- TAB: スコアボード -->
-    <div id="tabScore" style="display:none">
-      <div class="card mb-3">
-        <div class="card-body">
-          <p class="text-muted small mb-2">各イニングの得点を入力してください</p>
-          <div class="table-responsive">
-            <table class="scoreboard" id="scoreboard">
-              <thead>
-                <tr id="inningHeader">
-                  <th class="team-name">チーム</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr id="myScoreRow">
-                  <td class="team-name" id="myTeamScoreLabel">自チーム</td>
-                </tr>
-                <tr id="oppScoreRow">
-                  <td class="team-name" id="oppTeamScoreLabel">相手</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-primary" onclick="addInning()">
-              <i class="bi bi-plus"></i> イニング追加
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="saveScore()">
-              <i class="bi bi-save me-1"></i>スコア保存
-            </button>
-          </div>
+    <!-- Score Board -->
+    <div class="card mb-2">
+      <div class="card-header py-2"><i class="bi bi-grid me-1"></i>スコアボード</div>
+      <div class="card-body p-2">
+        <div class="table-responsive">
+          <table class="scoreboard" id="scoreboard">
+            <thead><tr id="inningHeader"><th class="team-name">チーム</th></tr></thead>
+            <tbody>
+              <tr id="myScoreRow"><td class="team-name">自チーム</td></tr>
+              <tr id="oppScoreRow"><td class="team-name">相手</td></tr>
+            </tbody>
+          </table>
         </div>
+        <button class="btn btn-sm btn-primary mt-2" onclick="saveScore()">
+          <i class="bi bi-save me-1"></i>スコア保存
+        </button>
       </div>
-      <button class="btn btn-success w-100" onclick="completeGame()">
-        <i class="bi bi-flag-fill me-1"></i>試合終了・確定
-      </button>
     </div>
 
-    <!-- TAB: 投手記録 -->
-    <div id="tabPitching" style="display:none">
-      <div class="d-flex gap-2 mb-3">
-        <button class="btn btn-primary flex-fill" onclick="openPitchingModal(null,'my')">
-          <i class="bi bi-plus-circle me-1"></i>自チーム投手
-        </button>
-        <button class="btn btn-outline-secondary flex-fill" onclick="openPitchingModal(null,'opp')">
-          <i class="bi bi-plus-circle me-1"></i>相手投手
-        </button>
-      </div>
-      <div class="card">
-        <div class="card-body p-0">
-          <ul class="ab-list" id="pitchingList">
-            <li class="empty-msg py-3">投手が記録されていません</li>
-          </ul>
-        </div>
+    <!-- Pitcher Assignment (Auto Stats) -->
+    <div class="card mb-2">
+      <div class="card-header py-2"><i class="bi bi-person-badge me-1"></i>投手記録（自チーム）</div>
+      <div class="card-body p-2" id="pitcherAssignmentArea">
+        <p class="text-muted small mb-0">スコアボードを保存してからイニングごとに投手を選択してください</p>
       </div>
     </div>
+
+    <!-- Complete Game -->
+    <button class="btn btn-success w-100 mb-3" onclick="completeGame()">
+      <i class="bi bi-flag-fill me-1"></i>試合終了・確定
+    </button>
   </div>
 </div>
 
@@ -190,13 +140,6 @@
         <!-- Direction (shown when needed) -->
         <div id="directionSection" class="mb-3" style="display:none">
           <label class="form-label fw-semibold">打球方向</label>
-          <!--
-            フィールド設計 (game.html):
-            - ホームベース (150,242)
-            - ファウルライン 45°: L(5,97) R(295,97)
-            - 1B(214,178), 3B(86,178) はファウルライン上
-            - 2B(150,114) = 1B+3B-Home
-          -->
           <svg id="dirSvg" viewBox="0 0 300 250" class="spray-svg" style="max-width:280px;">
             <!-- フェアテリトリー (45°ファン) -->
             <path d="M 150,242 L 5,97 Q 150,-13 295,97 Z" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
@@ -204,12 +147,11 @@
             <path d="M 150,242 L 214,178 L 150,114 L 86,178 Z" fill="#f5e6c8" stroke="#bbb" stroke-width="1"/>
             <!-- ピッチャーズマウンド -->
             <circle cx="150" cy="167" r="8" fill="#d4a853" opacity="0.8"/>
-            <!-- ベース (ファウルラインに合わせた位置) -->
+            <!-- ベース -->
             <rect x="143" y="235" width="14" height="14" fill="white" stroke="#555" stroke-width="1.5" transform="rotate(45 150 242)"/>
             <rect x="207" y="171" width="14" height="14" fill="white" stroke="#555" stroke-width="1.5" transform="rotate(45 214 178)"/>
             <rect x="143" y="107" width="14" height="14" fill="white" stroke="#555" stroke-width="1.5" transform="rotate(45 150 114)"/>
             <rect x="79"  y="171" width="14" height="14" fill="white" stroke="#555" stroke-width="1.5" transform="rotate(45 86 178)"/>
-
             <!-- クリック可能ゾーン (外野) -->
             <circle cx="50"  cy="124" r="28" class="spray-zone" data-dir="LF" fill="rgba(200,230,200,0.15)" stroke="transparent" stroke-width="2"/>
             <circle cx="90"  cy="93"  r="28" class="spray-zone" data-dir="LC" fill="rgba(200,230,200,0.15)" stroke="transparent" stroke-width="2"/>
@@ -222,7 +164,6 @@
             <circle cx="150" cy="168" r="22" class="spray-zone" data-dir="P"  fill="rgba(200,200,240,0.15)" stroke="transparent" stroke-width="2"/>
             <circle cx="182" cy="158" r="22" class="spray-zone" data-dir="2B" fill="rgba(200,200,240,0.15)" stroke="transparent" stroke-width="2"/>
             <circle cx="205" cy="192" r="22" class="spray-zone" data-dir="1B" fill="rgba(200,200,240,0.15)" stroke="transparent" stroke-width="2"/>
-
             <!-- ゾーンラベル -->
             <text x="50"  y="128" text-anchor="middle" font-size="12" fill="#2d6a4f" pointer-events="none">LF</text>
             <text x="90"  y="97"  text-anchor="middle" font-size="11" fill="#2d6a4f" pointer-events="none">左中</text>
@@ -262,6 +203,9 @@
       </div>
       <div class="modal-footer py-2">
         <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+        <button class="btn btn-danger btn-sm me-auto" id="abDeleteBtn" style="display:none" onclick="deleteCurrentAtBat()">
+          <i class="bi bi-trash3 me-1"></i>削除
+        </button>
         <button class="btn btn-primary btn-sm" onclick="saveAtBat()">
           <i class="bi bi-save me-1"></i>保存
         </button>
@@ -270,68 +214,37 @@
   </div>
 </div>
 
-<!-- ===== Pitching Modal ===== -->
-<div class="modal fade" id="pitModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+<!-- ===== Substitution Modal ===== -->
+<div class="modal fade" id="subModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header py-2" style="background:var(--primary);color:#fff">
-        <h6 class="modal-title mb-0" id="pitModalTitle">投手を記録</h6>
+        <h6 class="modal-title mb-0">代打/代走を登録</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label fw-semibold">投手</label>
-          <select id="pitPitcherSelect" class="form-select"></select>
-          <input id="pitPitcherText" type="text" class="form-control mt-1" placeholder="投手名を入力" style="display:none">
+          <label class="form-label fw-semibold">区分</label>
+          <select id="subType" class="form-select">
+            <option value="代打">代打</option>
+            <option value="代走">代走</option>
+          </select>
         </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label fw-semibold">投球回数（例：6.2）</label>
-            <input id="pitInnings" type="text" class="form-control" placeholder="6.2 = 6回2/3">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">投手勝敗</label>
-            <select id="pitDecision" class="form-select">
-              <option value="">なし</option>
-              <option value="win">勝</option>
-              <option value="loss">負</option>
-              <option value="save">セーブ</option>
-            </select>
-          </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">選手</label>
+          <select id="subPlayerSel" class="form-select">
+            <option value="">選択してください</option>
+          </select>
         </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label fw-semibold">被安打</label>
-            <input id="pitHits" type="number" class="form-control" value="0" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">奪三振</label>
-            <input id="pitK" type="number" class="form-control" value="0" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">四球</label>
-            <input id="pitBB" type="number" class="form-control" value="0" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">死球</label>
-            <input id="pitHBP" type="number" class="form-control" value="0" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">失点</label>
-            <input id="pitR" type="number" class="form-control" value="0" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">自責点</label>
-            <input id="pitER" type="number" class="form-control" value="0" min="0">
-          </div>
+        <div class="mb-1">
+          <label class="form-label fw-semibold">登場イニング（回）</label>
+          <input id="subInning" type="number" class="form-control" min="1" max="15" placeholder="例: 5">
         </div>
-        <input type="hidden" id="pitId">
-        <input type="hidden" id="pitTeam">
       </div>
       <div class="modal-footer py-2">
         <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
-        <button class="btn btn-primary btn-sm" onclick="savePitching()">
-          <i class="bi bi-save me-1"></i>保存
+        <button class="btn btn-primary btn-sm" onclick="saveSub()">
+          <i class="bi bi-save me-1"></i>登録
         </button>
       </div>
     </div>

@@ -324,3 +324,135 @@ body {
   padding: 24px 0;
   font-size: 0.9rem;
 }
+
+/* ===== Scorecard Grid ===== */
+.scorecard-table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  width: 100%;
+}
+.scorecard-table th,
+.scorecard-table td {
+  border: 1px solid #dee2e6;
+  text-align: center;
+  padding: 1px 2px;
+}
+.sc-ord {
+  width: 22px;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.sc-name {
+  text-align: left !important;
+  min-width: 58px;
+  max-width: 80px;
+  padding: 2px 4px !important;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sc-pos {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.sc-inn {
+  width: 36px;
+  font-weight: 600;
+  background: #f8f9fa;
+  font-size: 0.75rem;
+}
+.sc-cell {
+  width: 36px;
+  height: 38px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.sc-cell:hover       { background: rgba(26,71,42,0.07) !important; }
+.sc-hit              { background: #fff9e6; color: #c62828; font-weight: 700; }
+.sc-hr               { background: #fde8ea; color: #c62828; font-weight: 700; }
+.sc-walk             { background: #e3f2fd; color: #1565c0; }
+.sc-out              { color: #495057; }
+.sc-spc              { color: #e65100; }
+.sc-empty            { color: #ccc; }
+.sc-na               { background: #f5f5f5 !important; cursor: default !important; }
+.sc-na:hover         { background: #f5f5f5 !important; }
+.cell-res  { font-size: 0.85rem; font-weight: 700; line-height: 1.1; }
+.cell-dir  { font-size: 0.58rem; display: block; color: var(--muted); line-height: 1.1; }
+.cell-rbi  { font-size: 0.58rem; display: block; color: #c62828; line-height: 1.1; }
+.cell-plus { font-size: 1rem; color: #ddd; line-height: 1; }
+.sc-sub-row { background: #f8f9ff; }
+.sc-sub-ord  { font-size: 0.62rem !important; color: var(--muted) !important; }
+.sc-sub-name { font-size: 0.7rem !important; font-style: italic; color: #555 !important; }
+.sc-sub-del {
+  border: none; background: none; color: #dc3545;
+  cursor: pointer; font-size: 0.65rem; padding: 0 1px; line-height: 1;
+}
+.sc-add-row td { border-color: transparent !important; padding: 1px 0 !important; }
+
+/* Inning control buttons */
+.inn-btn {
+  width: 26px; height: 26px;
+  border: 1.5px solid var(--primary);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+.inn-btn:hover { background: var(--primary-pale); }
+
+/* Pitcher assignment */
+.pit-assign-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 3px;
+  padding: 2px 0;
+}
+.pit-assign-col {
+  min-width: 46px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.pit-assign-col .inn-lbl {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.pit-assign-col select {
+  width: 46px;
+  font-size: 0.65rem;
+  padding: 1px 2px;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+}
+.pit-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+.pit-stat-row input[type="number"] {
+  width: 34px;
+  font-size: 0.72rem;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 1px 3px;
+  text-align: center;
+}
+.btn-xs { font-size: 0.7rem !important; padding: 1px 5px !important; line-height: 1.4 !important; }
