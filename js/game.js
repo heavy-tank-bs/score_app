@@ -115,12 +115,13 @@ let myLineupData  = [];
 let oppLineupData = [];
 
 function renderLineupSlots() {
-  myLineupData  = GAME.myLineup  && GAME.myLineup.length
-    ? [...GAME.myLineup]
-    : Array.from({length:9}, (_,i) => ({ order:i+1, playerId:'', position:'' }));
-  oppLineupData = GAME.oppLineup && GAME.oppLineup.length
-    ? [...GAME.oppLineup]
-    : Array.from({length:9}, (_,i) => ({ order:i+1, name:'', position:'' }));
+  // 保存済みデータを復元しつつ、常に9枠以上を確保する
+  const myBase  = (GAME.myLineup  && GAME.myLineup.length)  ? [...GAME.myLineup]  : [];
+  const oppBase = (GAME.oppLineup && GAME.oppLineup.length) ? [...GAME.oppLineup] : [];
+  while (myBase.length  < 9) myBase.push({ order: myBase.length  + 1, playerId: '', position: '' });
+  while (oppBase.length < 9) oppBase.push({ order: oppBase.length + 1, name: '',     position: '' });
+  myLineupData  = myBase;
+  oppLineupData = oppBase;
   renderMySlots();
   renderOppSlots();
 }
@@ -193,10 +194,21 @@ function saveLineupAndGo() {
   GAME.oppLineup = oppLineupData.filter(s => s.name);
   GAME.status    = 'recording';
   if (!GAME.numInnings) GAME.numInnings = 7;
-  Storage.updateGame(GAME);
+  try {
+    Storage.updateGame(GAME);
+  } catch (e) {
+    showToast('保存に失敗しました: ' + e.message, 'danger');
+    console.error('saveLineupAndGo Storage.updateGame:', e);
+    return;
+  }
   renderStepBar();
   showStep('record');
-  renderRecord();
+  try {
+    renderRecord();
+  } catch (e) {
+    console.error('saveLineupAndGo renderRecord:', e);
+    showToast('画面の更新に失敗しました: ' + e.message, 'danger');
+  }
   showToast('スタメンを保存しました');
 }
 
