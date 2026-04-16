@@ -540,27 +540,34 @@ function buildScoreboard() {
   );
   const myArr  = GAME.innings?.my  || [];
   const oppArr = GAME.innings?.opp || [];
+  const isHome = GAME.isHome ?? true;
 
   document.getElementById('inningHeader').innerHTML =
     '<th class="team-name">チーム</th>'
     + Array.from({length: numInnings}, (_, i) => `<th>${i+1}</th>`).join('')
     + '<th class="total">計</th>';
 
-  document.getElementById('myScoreRow').innerHTML =
-    `<td class="team-name">${Storage.getTeamName()}</td>`
-    + Array.from({length: numInnings}, (_, i) =>
-        `<td><input type="number" class="score-input" min="0" value="${myArr[i]??''}"
-          onchange="updateInningScore('my',${i},this.value)"></td>`
-      ).join('')
-    + `<td class="total" id="myTotal">${myArr.reduce((a,v)=>a+(v||0),0)}</td>`;
+  // チームの行HTMLを生成（先攻/後攻ラベル付き）
+  function rowHtml(team, label) {
+    const arr  = team === 'my' ? myArr : oppArr;
+    const name = team === 'my' ? Storage.getTeamName() : GAME.opponent;
+    return `<tr id="${team}ScoreRow">
+      <td class="team-name">
+        ${name}<small class="text-muted ms-1" style="font-size:0.65rem">${label}</small>
+      </td>
+      ${Array.from({length: numInnings}, (_, i) =>
+        `<td><input type="number" class="score-input" min="0" value="${arr[i]??''}"
+          onchange="updateInningScore('${team}',${i},this.value)"></td>`
+      ).join('')}
+      <td class="total" id="${team}Total">${arr.reduce((a,v)=>a+(v||0),0)}</td>
+    </tr>`;
+  }
 
-  document.getElementById('oppScoreRow').innerHTML =
-    `<td class="team-name">${GAME.opponent}</td>`
-    + Array.from({length: numInnings}, (_, i) =>
-        `<td><input type="number" class="score-input" min="0" value="${oppArr[i]??''}"
-          onchange="updateInningScore('opp',${i},this.value)"></td>`
-      ).join('')
-    + `<td class="total" id="oppTotal">${oppArr.reduce((a,v)=>a+(v||0),0)}</td>`;
+  // 先攻チームを上行・後攻チームを下行に表示
+  const tbody = document.querySelector('#scoreboard tbody');
+  tbody.innerHTML = isHome
+    ? rowHtml('opp', '先攻') + rowHtml('my',  '後攻')  // 自チームが後攻
+    : rowHtml('my',  '先攻') + rowHtml('opp', '後攻'); // 自チームが先攻
 }
 
 function updateInningScore(team, idx, val) {
@@ -1141,6 +1148,7 @@ function toggleHomeAway() {
   GAME.isHome = !GAME.isHome;
   Storage.updateGame(GAME);
   updateHomeAwayDisplay();
+  buildScoreboard();
   showToast(GAME.isHome ? '後攻（ホーム）に変更しました' : '先攻（アウェイ）に変更しました');
 }
 
