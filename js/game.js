@@ -45,6 +45,11 @@ let selectedResult    = '';
 let selectedDirection = '';
 let currentRbi        = 0;
 
+// タイマー
+let timerInterval = null;
+let timerSeconds  = 0;
+let timerRunning  = false;
+
 // スコアカードのセル編集状態
 let currentOrder  = null;
 let currentInning = null;
@@ -239,6 +244,7 @@ function renderRecord() {
   const sInn = document.getElementById('scoreInnDisplay');
   if (sInn) sInn.textContent = getNumInnings() + '回';
   updateScoreDisplay();
+  updateHomeAwayDisplay();
   renderScorecard();
   renderOppScorecard();
   buildScoreboard();
@@ -1127,4 +1133,60 @@ function setOppPitcherStat(id, stat, value) {
 function saveOppPitcherStats() {
   Storage.updateGame(GAME);
   showToast('相手投手記録を保存しました');
+}
+
+// ===== 先攻・後攻切り替え =====
+
+function toggleHomeAway() {
+  GAME.isHome = !GAME.isHome;
+  Storage.updateGame(GAME);
+  updateHomeAwayDisplay();
+  showToast(GAME.isHome ? '後攻（ホーム）に変更しました' : '先攻（アウェイ）に変更しました');
+}
+
+function updateHomeAwayDisplay() {
+  const btn = document.getElementById('homeAwayBtn');
+  if (!btn) return;
+  if (GAME.isHome) {
+    btn.textContent = '後攻（ホーム）';
+    btn.className   = 'btn btn-sm btn-outline-primary';
+  } else {
+    btn.textContent = '先攻（アウェイ）';
+    btn.className   = 'btn btn-sm btn-outline-warning';
+  }
+}
+
+// ===== タイマー =====
+
+function toggleTimer() {
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('timerBtn').innerHTML = '<i class="bi bi-play-fill"></i>';
+    document.getElementById('timerBtn').className = 'btn btn-sm btn-outline-success';
+  } else {
+    timerInterval = setInterval(() => {
+      timerSeconds++;
+      document.getElementById('timerDisplay').textContent = formatTimerTime(timerSeconds);
+    }, 1000);
+    timerRunning = true;
+    document.getElementById('timerBtn').innerHTML = '<i class="bi bi-pause-fill"></i>';
+    document.getElementById('timerBtn').className = 'btn btn-sm btn-warning';
+  }
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerSeconds = 0;
+  document.getElementById('timerDisplay').textContent = '00:00:00';
+  document.getElementById('timerBtn').innerHTML = '<i class="bi bi-play-fill"></i>';
+  document.getElementById('timerBtn').className = 'btn btn-sm btn-outline-success';
+}
+
+function formatTimerTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }

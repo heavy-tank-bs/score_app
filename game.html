@@ -62,6 +62,25 @@
             <span class="text-muted small" id="recDate"></span>
           </div>
         </div>
+        <!-- 先攻/後攻 + タイマー -->
+        <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top flex-wrap gap-2">
+          <button class="btn btn-sm" id="homeAwayBtn" onclick="toggleHomeAway()">
+            後攻（ホーム）
+          </button>
+          <div class="d-flex align-items-center gap-2">
+            <span id="timerDisplay"
+              class="fw-bold font-monospace"
+              style="font-size:1.15rem;min-width:84px;text-align:right;letter-spacing:0.04em">
+              00:00:00
+            </span>
+            <button class="btn btn-sm btn-outline-success" id="timerBtn" onclick="toggleTimer()" title="スタート/ストップ">
+              <i class="bi bi-play-fill"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="resetTimer()" title="リセット">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
