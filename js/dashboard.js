@@ -22,9 +22,11 @@ const DIR_COORDS = {
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', () => {
-  allData = Storage.get();
-  buildYearFilter();
-  applyFilter();
+  Crypto.requireAuth(() => {
+    allData = Storage.get();
+    buildYearFilter();
+    applyFilter();
+  });
 });
 
 function buildYearFilter() {

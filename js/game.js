@@ -57,24 +57,26 @@ let subTargetTeam  = 'my';
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  GAMEID = params.get('id');
-  if (!GAMEID) { window.location.href = 'index.html'; return; }
+  Crypto.requireAuth(() => {
+    const params = new URLSearchParams(window.location.search);
+    GAMEID = params.get('id');
+    if (!GAMEID) { window.location.href = 'index.html'; return; }
 
-  GAME = Storage.getGame(GAMEID);
-  if (!GAME) { alert('試合データが見つかりません'); window.location.href = 'index.html'; return; }
+    GAME = Storage.getGame(GAMEID);
+    if (!GAME) { alert('試合データが見つかりません'); window.location.href = 'index.html'; return; }
 
-  renderStepBar();
-  buildResultGrid();
-  initDirectionSvg();
+    renderStepBar();
+    buildResultGrid();
+    initDirectionSvg();
 
-  if (GAME.status === 'lineup') {
-    showStep('lineup');
-    renderLineupSlots();
-  } else {
-    showStep('record');
-    renderRecord();
-  }
+    if (GAME.status === 'lineup') {
+      showStep('lineup');
+      renderLineupSlots();
+    } else {
+      showStep('record');
+      renderRecord();
+    }
+  });
 });
 
 function showToast(msg, type = 'success') {

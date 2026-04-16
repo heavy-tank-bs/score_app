@@ -6,7 +6,9 @@ const Storage = (() => {
   function get() {
     try {
       const raw = localStorage.getItem(KEY);
-      return raw ? JSON.parse(raw) : defaultData();
+      if (!raw) return defaultData();
+      const data = Crypto.decrypt(raw);
+      return data || defaultData();
     } catch (e) {
       return defaultData();
     }
@@ -17,7 +19,7 @@ const Storage = (() => {
   }
 
   function save(data) {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(KEY, Crypto.encrypt(data));
   }
 
   function uid(prefix) {
@@ -145,11 +147,12 @@ const Storage = (() => {
 
     // --- Export / Import ---
     exportJSON() {
-      const data = get();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+      const data    = get();
+      const content = Crypto.encrypt(data); // 暗号化してエクスポート
+      const blob    = new Blob([content], { type: 'application/json' });
+      const url     = URL.createObjectURL(blob);
+      const a       = document.createElement('a');
+      a.href     = url;
       a.download = 'baseball_' + new Date().toISOString().slice(0, 10) + '.json';
       document.body.appendChild(a);
       a.click();
@@ -162,8 +165,9 @@ const Storage = (() => {
         const reader = new FileReader();
         reader.onload = e => {
           try {
-            const data = JSON.parse(e.target.result);
-            if (!data.players || !data.games) throw new Error('Invalid format');
+            const raw  = e.target.result;
+            const data = Crypto.decrypt(raw); // 暗号化・平文どちらも対応
+            if (!data || !data.players || !data.games) throw new Error('Invalid format');
             save(data);
             resolve(data);
           } catch (err) { reject(err); }
