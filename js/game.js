@@ -194,6 +194,12 @@ function addLineupSlot(team) {
   }
 }
 
+function editLineup() {
+  showStep('lineup');
+  renderStepBar();
+  renderLineupSlots();
+}
+
 function saveLineupAndGo() {
   GAME.myLineup  = myLineupData.filter(s => s.playerId);
   GAME.oppLineup = oppLineupData.filter(s => s.name);
@@ -317,7 +323,8 @@ function renderScorecard() {
       const subPlayer = players.find(p => p.id === sub.playerId);
       const nextSub   = subs[si + 1];
       const subEnd    = nextSub ? nextSub.inning - 1 : numInnings;
-      html += '<tr class="sc-sub-row">';
+      const isDef     = sub.type === '守備交代';
+      html += `<tr class="sc-sub-row${isDef?' sc-sub-def':''}">`;
       html += `<td class="sc-ord sc-sub-ord">${sub.inning}↑</td>`;
       html += `<td class="sc-name sc-sub-name">${sub.type||'代打'} ${subPlayer?.name||'?'}
         <button class="sc-sub-del" onclick="deleteSub(${order},${sub.inning})" title="削除">×</button></td>`;
@@ -404,7 +411,8 @@ function renderOppScorecard() {
     subs.forEach((sub, si) => {
       const nextSub = subs[si + 1];
       const subEnd  = nextSub ? nextSub.inning - 1 : numInnings;
-      html += '<tr class="sc-sub-row">';
+      const isDef   = sub.type === '守備交代';
+      html += `<tr class="sc-sub-row${isDef?' sc-sub-def':''}">`;
       html += `<td class="sc-ord sc-sub-ord">${sub.inning}↑</td>`;
       html += `<td class="sc-name sc-sub-name">${sub.type||'代打'} ${sub.name||'?'}
         <button class="sc-sub-del" onclick="deleteOppSub(${order},${sub.inning})" title="削除">×</button></td>`;

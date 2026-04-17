@@ -385,7 +385,8 @@ body {
 .cell-dir  { font-size: 0.58rem; display: block; color: var(--muted); line-height: 1.1; }
 .cell-rbi  { font-size: 0.58rem; display: block; color: #c62828; line-height: 1.1; }
 .cell-plus { font-size: 1rem; color: #ddd; line-height: 1; }
-.sc-sub-row { background: #f8f9ff; }
+.sc-sub-row            { background: #f8f9ff; }
+.sc-sub-row.sc-sub-def { background: #f0fff4; } /* 守備交代は薄緑 */
 .sc-sub-ord  { font-size: 0.62rem !important; color: var(--muted) !important; }
 .sc-sub-name { font-size: 0.7rem !important; font-style: italic; color: #555 !important; }
 .sc-sub-del {
