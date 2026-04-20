@@ -298,6 +298,18 @@ function getAtBatForCell(order, inning) {
   );
 }
 
+function getAtBatsForCell(order, inning) {
+  return (GAME.atBats || []).filter(ab =>
+    ab.isMyTeam && ab.order === order && ab.inning === inning
+  );
+}
+
+function getOppAtBatsForCell(order, inning) {
+  return (GAME.atBats || []).filter(ab =>
+    !ab.isMyTeam && ab.order === order && ab.inning === inning
+  );
+}
+
 function renderScorecard() {
   const numInnings = getNumInnings();
   const myLineup   = GAME.myLineup || [];
@@ -356,20 +368,38 @@ function renderScorecard() {
   tbl.innerHTML = html;
 }
 
-function renderMyCell(order, inn) {
-  const ab = getAtBatForCell(order, inn);
-  return ab ? renderFilledCell(ab, `openCellAtbat(${order},${inn})`)
-            : renderEmptyCell(`openCellAtbat(${order},${inn})`);
+function renderAbEntries(abs, editFn) {
+  return abs.map(ab => {
+    const label = CELL_LABELS[ab.result] || ab.result || '?';
+    const cls   = CELL_CLS[ab.result] || 'out';
+    const dir   = ab.direction ? `<small class="cell-dir">${Stats.DIRECTION_LABELS[ab.direction]||ab.direction}</small>` : '';
+    const rbi   = ab.rbi > 0 ? `<small class="cell-rbi">${ab.rbi}点</small>` : '';
+    return `<div class="sc-ab-entry sc-${cls}" onclick="${editFn(ab.id)};event.stopPropagation()">
+      <div class="cell-res">${label}</div>${dir}${rbi}
+    </div>`;
+  }).join('');
 }
 
-function openCellAtbat(order, inning) {
+function renderMyCell(order, inn) {
+  const abs = getAtBatsForCell(order, inn);
+  if (!abs.length) {
+    return `<td class="sc-cell sc-empty" onclick="openCellAtbat(${order},${inn},null)">
+      <span class="cell-plus">＋</span>
+    </td>`;
+  }
+  return `<td class="sc-cell sc-multi" onclick="openCellAtbat(${order},${inn},null)">
+    ${renderAbEntries(abs, id => `openCellAtbat(${order},${inn},'${id}')`)}
+    <div class="sc-ab-add">＋</div>
+  </td>`;
+}
+
+function openCellAtbat(order, inning, abId = null) {
   currentOrder  = order;
   currentInning = inning;
   const players = Storage.getPlayers();
   const batter  = getBatterForSlot(order, inning, players);
   _preSelectPlayerId = batter?.playerId || null;
-  const existing = getAtBatForCell(order, inning);
-  openAtbatModal(existing?.id || null, 'my');
+  openAtbatModal(abId, 'my');
 }
 
 // ===== 相手チーム スコアカードグリッド =====
@@ -445,18 +475,24 @@ function renderOppScorecard() {
 }
 
 function renderOppCell(order, inn) {
-  const ab = getOppAtBatForCell(order, inn);
-  return ab ? renderFilledCell(ab, `openOppCellAtbat(${order},${inn})`)
-            : renderEmptyCell(`openOppCellAtbat(${order},${inn})`);
+  const abs = getOppAtBatsForCell(order, inn);
+  if (!abs.length) {
+    return `<td class="sc-cell sc-empty" onclick="openOppCellAtbat(${order},${inn},null)">
+      <span class="cell-plus">＋</span>
+    </td>`;
+  }
+  return `<td class="sc-cell sc-multi" onclick="openOppCellAtbat(${order},${inn},null)">
+    ${renderAbEntries(abs, id => `openOppCellAtbat(${order},${inn},'${id}')`)}
+    <div class="sc-ab-add">＋</div>
+  </td>`;
 }
 
-function openOppCellAtbat(order, inning) {
+function openOppCellAtbat(order, inning, abId = null) {
   currentOrder  = order;
   currentInning = inning;
   const batter  = getOppBatterForSlot(order, inning);
   _preSelectOppName = batter?.name || null;
-  const existing = getOppAtBatForCell(order, inning);
-  openAtbatModal(existing?.id || null, 'opp');
+  openAtbatModal(abId, 'opp');
 }
 
 // 共通のセル描画ヘルパー
@@ -553,11 +589,7 @@ function deleteOppSub(order, inning) {
 
 // ===== スコアボード =====
 function buildScoreboard() {
-  const numInnings = Math.max(
-    getNumInnings(),
-    (GAME.innings?.my  || []).length,
-    (GAME.innings?.opp || []).length
-  );
+  const numInnings = getNumInnings();
   const myArr  = GAME.innings?.my  || [];
   const oppArr = GAME.innings?.opp || [];
   const isHome = GAME.isHome ?? true;
@@ -1045,10 +1077,26 @@ function deleteCurrentAtBat() {
   const isMyTeam = document.getElementById('abTeam').value === 'my';
   if (!abId) return;
   if (!confirm('この打席記録を削除しますか？')) return;
+
+  const existingAb  = (GAME.atBats||[]).find(a => a.id === abId);
+  const rbiToRemove = existingAb?.rbi || 0;
+  const rbiInning   = existingAb?.inning;
+  const rbiTeam     = isMyTeam ? 'my' : 'opp';
+
   Storage.deleteAtBat(GAMEID, abId);
   GAME = Storage.getGame(GAMEID);
+
+  if (rbiToRemove > 0 && rbiInning) {
+    if (!GAME.innings) GAME.innings = { my: [], opp: [] };
+    if (!GAME.innings[rbiTeam]) GAME.innings[rbiTeam] = [];
+    const idx = rbiInning - 1;
+    GAME.innings[rbiTeam][idx] = Math.max(0, (GAME.innings[rbiTeam][idx] || 0) - rbiToRemove);
+    Storage.updateGame(GAME);
+  }
+
   bootstrap.Modal.getInstance(document.getElementById('abModal')).hide();
   if (isMyTeam) renderScorecard(); else renderOppScorecard();
+  buildScoreboard();
   currentOrder  = null;
   currentInning = null;
   showToast('削除しました', 'secondary');

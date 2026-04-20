@@ -458,3 +458,15 @@ body {
   text-align: center;
 }
 .btn-xs { font-size: 0.7rem !important; padding: 1px 5px !important; line-height: 1.4 !important; }
+
+/* ===== Multi at-bat cells ===== */
+.sc-cell.sc-multi { height: auto; min-height: 38px; padding: 1px; vertical-align: top; }
+.sc-ab-entry {
+  border-bottom: 1px dotted #ddd;
+  padding: 1px 2px;
+  cursor: pointer;
+  line-height: 1.15;
+}
+.sc-ab-entry:last-of-type { border-bottom: none; }
+.sc-ab-entry:hover { background: rgba(0,0,0,0.06); }
+.sc-ab-add { font-size: 0.6rem; color: #ccc; text-align: center; line-height: 1.5; }
