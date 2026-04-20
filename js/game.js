@@ -227,7 +227,19 @@ function saveLineupAndGo() {
 
 function getNumInnings() { return GAME.numInnings || 7; }
 
+function snapshotScoreInputs() {
+  if (!GAME.innings) GAME.innings = { my: [], opp: [] };
+  if (!GAME.innings.my)  GAME.innings.my  = [];
+  if (!GAME.innings.opp) GAME.innings.opp = [];
+  document.querySelectorAll('.score-input[data-score-team]').forEach(inp => {
+    const team = inp.dataset.scoreTeam;
+    const idx  = parseInt(inp.dataset.scoreIdx);
+    if (!isNaN(idx)) GAME.innings[team][idx] = parseInt(inp.value) || 0;
+  });
+}
+
 function changeInnings(delta) {
+  snapshotScoreInputs();
   const next = Math.max(1, Math.min(15, getNumInnings() + delta));
   if (next === getNumInnings()) return;
   GAME.numInnings = next;
@@ -489,7 +501,7 @@ function openSubModal(order, team = 'my') {
 
   document.getElementById('subInning').value = '';
   document.getElementById('subType').value   = '代打';
-  new bootstrap.Modal(document.getElementById('subModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('subModal')).show();
 }
 
 function saveSub() {
@@ -564,7 +576,7 @@ function buildScoreboard() {
         ${name}<small class="text-muted ms-1" style="font-size:0.65rem">${label}</small>
       </td>
       ${Array.from({length: numInnings}, (_, i) =>
-        `<td><input type="number" class="score-input" min="0" value="${arr[i]??''}"
+        `<td><input type="number" class="score-input" data-score-team="${team}" data-score-idx="${i}" min="0" value="${arr[i]??''}"
           onchange="updateInningScore('${team}',${i},this.value)"></td>`
       ).join('')}
       <td class="total" id="${team}Total">${arr.reduce((a,v)=>a+(v||0),0)}</td>
@@ -581,10 +593,11 @@ function buildScoreboard() {
 function updateInningScore(team, idx, val) {
   if (!GAME.innings) GAME.innings = { my: [], opp: [] };
   GAME.innings[team][idx] = parseInt(val) || 0;
-  const arr = GAME.innings[team];
-  document.getElementById(team==='my'?'myTotal':'oppTotal').textContent =
-    arr.reduce((a,v) => a+(v||0), 0);
+  const arr    = GAME.innings[team];
+  const totalEl = document.getElementById(team==='my'?'myTotal':'oppTotal');
+  if (totalEl) totalEl.textContent = arr.reduce((a,v) => a+(v||0), 0);
   updateScoreDisplay();
+  Storage.updateGame(GAME);
 }
 
 function saveScore() {
@@ -596,6 +609,18 @@ function saveScore() {
 }
 
 // ===== 投手記録（交代対応・自動集計）=====
+
+// 指定イニングを担当する投手エントリを返す
+function getPitcherForInning(changes, inning) {
+  const sorted = changes.slice().sort((a,b) => a.entryInning - b.entryInning);
+  let result = null;
+  for (const ch of sorted) {
+    if (ch.entryInning <= inning) result = ch;
+    else break;
+  }
+  return result;
+}
+
 
 function migratePitcherData() {
   if (GAME.myPitchersByInning && !GAME.myPitcherChanges) {
@@ -629,7 +654,7 @@ function computePitcherStats() {
     if (!pid) return;
     if (!byPitcher[pid]) {
       const pl = players.find(p => p.id === pid);
-      byPitcher[pid] = { name: pl?.name||'?', totalOuts: 0, runs: 0 };
+      byPitcher[pid] = { name: pl?.name||'?', totalOuts: 0, runs: 0, autoHits: 0, autoBb: 0, autoK: 0 };
     }
     const next          = changes[i + 1];
     const myEntry       = (ch.entryInning-1)*3 + ch.entryOuts;
@@ -644,14 +669,28 @@ function computePitcherStats() {
     }
   });
 
+  // 打席記録（相手打者）から被安打・四死球・三振を自動集計
+  const validChanges = changes.filter(c => c.playerId);
+  (GAME.atBats || []).filter(ab => !ab.isMyTeam && ab.inning).forEach(ab => {
+    const ch = getPitcherForInning(validChanges, ab.inning);
+    if (!ch || !byPitcher[ch.playerId]) return;
+    const s = byPitcher[ch.playerId];
+    if (['1B','2B','3B','HR'].includes(ab.result)) s.autoHits++;
+    if (['BB','HBP'].includes(ab.result))          s.autoBb++;
+    if (['K','KL'].includes(ab.result))            s.autoK++;
+  });
+
   return Object.entries(byPitcher).map(([pid, s]) => ({
-    id:   pid, name: s.name,
-    ip:   Stats.formatInnings(s.totalOuts), totalOuts: s.totalOuts,
-    r:    s.runs,
-    hits: manStats[pid]?.hits || 0,
-    k:    manStats[pid]?.k    || 0,
-    bb:   manStats[pid]?.bb   || 0,
-    dec:  decisions[pid] || '',
+    id:       pid, name: s.name,
+    ip:       Stats.formatInnings(s.totalOuts), totalOuts: s.totalOuts,
+    r:        s.runs,
+    hits:     manStats[pid]?.hits ?? s.autoHits,
+    k:        manStats[pid]?.k    ?? s.autoK,
+    bb:       manStats[pid]?.bb   ?? s.autoBb,
+    hitsAuto: s.autoHits,
+    kAuto:    s.autoK,
+    bbAuto:   s.autoBb,
+    dec:      decisions[pid] || '',
   }));
 }
 
@@ -799,7 +838,6 @@ function autoGeneratePitchingRecords() {
 
   pitStats.forEach(p => {
     const dec = decisions[p.id] || '';
-    const man = manStats[p.id]  || {};
     manualOnly.push({
       _auto:       true,
       id:          'pit_auto_' + p.id,
@@ -810,9 +848,9 @@ function autoGeneratePitchingRecords() {
       win:         dec==='win',
       loss:        dec==='loss',
       save:        dec==='save',
-      hits:        man.hits || 0,
-      strikeouts:  man.k    || 0,
-      walks:       man.bb   || 0,
+      hits:        p.hits,
+      strikeouts:  p.k,
+      walks:       p.bb,
       hbp:         0,
       runs:        p.r,
       earnedRuns:  p.r,
@@ -954,6 +992,12 @@ function saveAtBat() {
     showToast('打球方向を選択してください', 'warning'); return;
   }
 
+  // 打点差分を算出（編集前の値と比較するため保存前に取得）
+  const prevRbi   = abId ? ((GAME.atBats||[]).find(a=>a.id===abId)?.rbi || 0) : 0;
+  const rbiDelta  = currentRbi - prevRbi;
+  const rbiInning = currentInning;
+  const rbiTeam   = isMyTeam ? 'my' : 'opp';
+
   const players = Storage.getPlayers();
   const player  = isMyTeam ? players.find(p => p.id === batterVal) : null;
 
@@ -979,8 +1023,19 @@ function saveAtBat() {
   }
 
   GAME = Storage.getGame(GAMEID);
+
+  // 打点をスコアに自動反映
+  if (rbiDelta !== 0 && rbiInning) {
+    if (!GAME.innings) GAME.innings = { my: [], opp: [] };
+    if (!GAME.innings[rbiTeam]) GAME.innings[rbiTeam] = [];
+    const idx = rbiInning - 1;
+    GAME.innings[rbiTeam][idx] = Math.max(0, (GAME.innings[rbiTeam][idx] || 0) + rbiDelta);
+    Storage.updateGame(GAME);
+  }
+
   bootstrap.Modal.getInstance(document.getElementById('abModal')).hide();
   if (isMyTeam) renderScorecard(); else renderOppScorecard();
+  buildScoreboard();
   currentOrder  = null;
   currentInning = null;
 }
@@ -1010,6 +1065,17 @@ function computeOppPitcherStats() {
   const myScore    = GAME.innings?.my || [];
   const manStats   = GAME.oppPitcherManualStats || {};
 
+  // 打席記録（自チーム打者）から被安打・四死球・三振を自動集計
+  const autoStats = {};
+  (GAME.atBats || []).filter(ab => ab.isMyTeam && ab.inning).forEach(ab => {
+    const ch = getPitcherForInning(changes, ab.inning);
+    if (!ch) return;
+    if (!autoStats[ch.id]) autoStats[ch.id] = { hits: 0, bb: 0, k: 0 };
+    if (['1B','2B','3B','HR'].includes(ab.result)) autoStats[ch.id].hits++;
+    if (['BB','HBP'].includes(ab.result))          autoStats[ch.id].bb++;
+    if (['K','KL'].includes(ab.result))            autoStats[ch.id].k++;
+  });
+
   return changes.map((ch, i) => {
     const next      = changes[i + 1];
     const myEntry   = (ch.entryInning - 1) * 3 + ch.entryOuts;
@@ -1022,16 +1088,20 @@ function computeOppPitcherStats() {
       if (next && (next.entryInning - 1) * 3 + next.entryOuts < endOuts) continue;
       runs += (myScore[inn - 1] || 0);
     }
-    const man = manStats[ch.id] || {};
+    const man  = manStats[ch.id] || {};
+    const auto = autoStats[ch.id] || { hits: 0, bb: 0, k: 0 };
     return {
       id:        ch.id,
       name:      ch.name || '(未設定)',
       ip:        Stats.formatInnings(totalOuts),
       totalOuts,
       r:         runs,
-      hits:      man.hits || 0,
-      k:         man.k    || 0,
-      bb:        man.bb   || 0,
+      hits:      man.hits ?? auto.hits,
+      k:         man.k    ?? auto.k,
+      bb:        man.bb   ?? auto.bb,
+      hitsAuto:  auto.hits,
+      kAuto:     auto.k,
+      bbAuto:    auto.bb,
     };
   });
 }
