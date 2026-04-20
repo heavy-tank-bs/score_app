@@ -271,8 +271,10 @@ function renderRecord() {
 }
 
 function updateScoreDisplay() {
-  const sc = Stats.gameScore(GAME);
-  document.getElementById('recScore').textContent = `${sc.my} - ${sc.opp}`;
+  const n   = getNumInnings();
+  const my  = (GAME.innings?.my  || []).slice(0, n).reduce((a,v)=>a+(v||0),0);
+  const opp = (GAME.innings?.opp || []).slice(0, n).reduce((a,v)=>a+(v||0),0);
+  document.getElementById('recScore').textContent = `${my} - ${opp}`;
 }
 
 // ===== 自チーム スコアカードグリッド =====
@@ -611,7 +613,7 @@ function buildScoreboard() {
         `<td><input type="number" class="score-input" data-score-team="${team}" data-score-idx="${i}" min="0" value="${arr[i]??''}"
           onchange="updateInningScore('${team}',${i},this.value)"></td>`
       ).join('')}
-      <td class="total" id="${team}Total">${arr.reduce((a,v)=>a+(v||0),0)}</td>
+      <td class="total" id="${team}Total">${arr.slice(0,numInnings).reduce((a,v)=>a+(v||0),0)}</td>
     </tr>`;
   }
 
@@ -627,7 +629,8 @@ function updateInningScore(team, idx, val) {
   GAME.innings[team][idx] = parseInt(val) || 0;
   const arr    = GAME.innings[team];
   const totalEl = document.getElementById(team==='my'?'myTotal':'oppTotal');
-  if (totalEl) totalEl.textContent = arr.reduce((a,v) => a+(v||0), 0);
+  const n = getNumInnings();
+  if (totalEl) totalEl.textContent = arr.slice(0,n).reduce((a,v) => a+(v||0), 0);
   updateScoreDisplay();
   Storage.updateGame(GAME);
 }
