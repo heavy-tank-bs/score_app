@@ -41,9 +41,15 @@ const CELL_CLS = {
 };
 
 // モーダル状態
-let selectedResult    = '';
-let selectedDirection = '';
-let currentRbi        = 0;
+let selectedResult      = '';
+let selectedDirection   = '';
+let currentRbi          = 0;
+let currentPitches      = [];
+let lastAutoAddedPitch  = false;
+
+// 守備入替モーダル
+let posSwapTeam = 'my';
+let posSwapOpts  = '';
 
 // タイマー
 let timerInterval = null;
@@ -251,6 +257,7 @@ function changeInnings(delta) {
   renderOppPitcherAssignment();
   const el = document.getElementById('scoreInnDisplay');
   if (el) el.textContent = next + '回';
+  updateInningBadge();
 }
 
 function renderRecord() {
@@ -262,6 +269,7 @@ function renderRecord() {
   const sInn = document.getElementById('scoreInnDisplay');
   if (sInn) sInn.textContent = getNumInnings() + '回';
   updateScoreDisplay();
+  updateInningBadge();
   updateHomeAwayDisplay();
   renderScorecard();
   renderOppScorecard();
@@ -274,7 +282,18 @@ function updateScoreDisplay() {
   const n   = getNumInnings();
   const my  = (GAME.innings?.my  || []).slice(0, n).reduce((a,v)=>a+(v||0),0);
   const opp = (GAME.innings?.opp || []).slice(0, n).reduce((a,v)=>a+(v||0),0);
-  document.getElementById('recScore').textContent = `${my} - ${opp}`;
+  const myEl  = document.getElementById('recMyScore');
+  const oppEl = document.getElementById('recOppScore');
+  if (myEl)  myEl.textContent  = my;
+  if (oppEl) oppEl.textContent = opp;
+}
+
+function updateInningBadge() {
+  const badge = document.getElementById('recInningBadge');
+  if (!badge) return;
+  const n      = getNumInnings();
+  const status = GAME.status === 'done' ? '試合終了' : '試合中';
+  badge.textContent = `${n}回・${status}`;
 }
 
 // ===== 自チーム スコアカードグリッド =====
@@ -332,13 +351,13 @@ function renderScorecard() {
   for (const slot of sorted) {
     const order  = slot.order;
     const player = players.find(p => p.id === slot.playerId);
-    const pos    = slot.position || '';
+    const pos    = getPlayerCurrentPos(order, 'my');
     const firstSub = (GAME.mySubs || []).filter(s=>s.order===order).sort((a,b)=>a.inning-b.inning)[0];
     const starterEnd = firstSub ? firstSub.inning - 1 : numInnings;
 
     html += '<tr>';
     html += `<td class="sc-ord">${order}</td>`;
-    html += `<td class="sc-name">${player?.name||'?'}<small class="sc-pos">${pos}</small></td>`;
+    html += `<td class="sc-name" style="font-size:0.88rem">${player?.name||'?'}<small class="sc-pos">${pos}</small></td>`;
     for (let inn = 1; inn <= numInnings; inn++) {
       html += inn > starterEnd ? '<td class="sc-cell sc-na"></td>' : renderMyCell(order, inn);
     }
@@ -361,10 +380,35 @@ function renderScorecard() {
       }
       html += '</tr>';
     });
-    html += `<tr class="sc-add-row"><td colspan="${numInnings+2}">
-      <button class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:0.7rem" onclick="openSubModal(${order},'my')">
-        <i class="bi bi-person-plus"></i> 代打/代走
-      </button></td></tr>`;
+    // 守備位置入替サブ行
+    const myPosChanges = (GAME.myPositionChanges||[])
+      .filter(c => c.orderA === order || c.orderB === order)
+      .sort((a,b) => a.inning - b.inning || (a.seq ?? 0) - (b.seq ?? 0));
+    const seenMyGroups = new Set();
+    for (const c of myPosChanges) {
+      if (c.groupId) {
+        if (seenMyGroups.has(c.groupId)) continue;
+        seenMyGroups.add(c.groupId);
+        const oldP = c.orderA === order ? c.origPosA : c.origPosB;
+        const newP = getPosAfterGroup(order, c.groupId, 'my');
+        html += `<tr class="sc-sub-row sc-sub-def">`;
+        html += `<td class="sc-ord sc-sub-ord">${c.inning}↑</td>`;
+        html += `<td class="sc-name sc-sub-name">守備 ${oldP||'?'}→${newP||'?'}
+          <button class="sc-sub-del" onclick="deletePosSwapGroup('${c.groupId}','my')" title="削除">×</button></td>`;
+        for (let inn = 1; inn <= numInnings; inn++) html += '<td class="sc-cell sc-na"></td>';
+        html += '</tr>';
+      } else {
+        const isA  = c.orderA === order;
+        const oldP = isA ? c.posA : c.posB;
+        const newP = isA ? c.posB : c.posA;
+        html += `<tr class="sc-sub-row sc-sub-def">`;
+        html += `<td class="sc-ord sc-sub-ord">${c.inning}↑</td>`;
+        html += `<td class="sc-name sc-sub-name">守備 ${oldP||'?'}→${newP||'?'}
+          <button class="sc-sub-del" onclick="deletePosSwap(${c.inning},${c.orderA},${c.orderB},'my')" title="削除">×</button></td>`;
+        for (let inn = 1; inn <= numInnings; inn++) html += '<td class="sc-cell sc-na"></td>';
+        html += '</tr>';
+      }
+    }
   }
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -439,13 +483,13 @@ function renderOppScorecard() {
   for (const slot of sorted) {
     const order = slot.order;
     const name  = slot.name || '';
-    const pos   = slot.position || '';
+    const pos   = getPlayerCurrentPos(order, 'opp');
     const firstSub = (GAME.oppSubs||[]).filter(s=>s.order===order).sort((a,b)=>a.inning-b.inning)[0];
     const starterEnd = firstSub ? firstSub.inning - 1 : numInnings;
 
     html += '<tr>';
     html += `<td class="sc-ord">${order}</td>`;
-    html += `<td class="sc-name">${name}<small class="sc-pos">${pos}</small></td>`;
+    html += `<td class="sc-name" style="font-size:0.88rem">${name}<small class="sc-pos">${pos}</small></td>`;
     for (let inn = 1; inn <= numInnings; inn++) {
       html += inn > starterEnd ? '<td class="sc-cell sc-na"></td>' : renderOppCell(order, inn);
     }
@@ -467,10 +511,35 @@ function renderOppScorecard() {
       }
       html += '</tr>';
     });
-    html += `<tr class="sc-add-row"><td colspan="${numInnings+2}">
-      <button class="btn btn-link btn-sm py-0 px-1 text-muted" style="font-size:0.7rem" onclick="openSubModal(${order},'opp')">
-        <i class="bi bi-person-plus"></i> 代打/代走
-      </button></td></tr>`;
+    // 守備位置入替サブ行
+    const oppPosChanges = (GAME.oppPositionChanges||[])
+      .filter(c => c.orderA === order || c.orderB === order)
+      .sort((a,b) => a.inning - b.inning || (a.seq ?? 0) - (b.seq ?? 0));
+    const seenOppGroups = new Set();
+    for (const c of oppPosChanges) {
+      if (c.groupId) {
+        if (seenOppGroups.has(c.groupId)) continue;
+        seenOppGroups.add(c.groupId);
+        const oldP = c.orderA === order ? c.origPosA : c.origPosB;
+        const newP = getPosAfterGroup(order, c.groupId, 'opp');
+        html += `<tr class="sc-sub-row sc-sub-def">`;
+        html += `<td class="sc-ord sc-sub-ord">${c.inning}↑</td>`;
+        html += `<td class="sc-name sc-sub-name">守備 ${oldP||'?'}→${newP||'?'}
+          <button class="sc-sub-del" onclick="deletePosSwapGroup('${c.groupId}','opp')" title="削除">×</button></td>`;
+        for (let inn = 1; inn <= numInnings; inn++) html += '<td class="sc-cell sc-na"></td>';
+        html += '</tr>';
+      } else {
+        const isA  = c.orderA === order;
+        const oldP = isA ? c.posA : c.posB;
+        const newP = isA ? c.posB : c.posA;
+        html += `<tr class="sc-sub-row sc-sub-def">`;
+        html += `<td class="sc-ord sc-sub-ord">${c.inning}↑</td>`;
+        html += `<td class="sc-name sc-sub-name">守備 ${oldP||'?'}→${newP||'?'}
+          <button class="sc-sub-del" onclick="deletePosSwap(${c.inning},${c.orderA},${c.orderB},'opp')" title="削除">×</button></td>`;
+        for (let inn = 1; inn <= numInnings; inn++) html += '<td class="sc-cell sc-na"></td>';
+        html += '</tr>';
+      }
+    }
   }
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -516,21 +585,54 @@ function renderEmptyCell(onclickStr) {
 }
 
 // ===== 代打/代走モーダル（両チーム共通）=====
-function openSubModal(order, team = 'my') {
-  subTargetOrder = order;
+function openSubModal(order, team = 'my', type = '代打') {
+  subTargetOrder = order || null;
   subTargetTeam  = team;
 
-  const sel  = document.getElementById('subPlayerSel');
-  const txt  = document.getElementById('subPlayerText');
+  const replSel = document.getElementById('subReplaceOrder');
+  const replTxt = document.getElementById('subReplaceText');
+  const sel     = document.getElementById('subPlayerSel');
+  const txt     = document.getElementById('subPlayerText');
 
   if (team === 'my') {
+    // 退く選手：現在出場中の選手（交代済みは最新の交代選手を表示）
+    replSel.style.display = '';
+    replTxt.style.display = 'none';
+    const players = Storage.getPlayers();
+    const lineup  = (GAME.myLineup || []).filter(l => l.playerId).sort((a,b) => a.order - b.order);
+    const mySubs  = GAME.mySubs || [];
+    replSel.innerHTML = '<option value="">選択してください</option>'
+      + lineup.map(l => {
+          const latestSub = mySubs
+            .filter(s => s.order === l.order)
+            .sort((a,b) => b.inning - a.inning)[0];
+          const currentId = latestSub ? latestSub.playerId : l.playerId;
+          const p = players.find(pl => pl.id === currentId);
+          return `<option value="${l.order}">${l.order}番 ${p?.name || '?'}</option>`;
+        }).join('');
+    if (order) replSel.value = String(order);
+    // 交代選手：全登録選手
     sel.style.display = '';
     txt.style.display = 'none';
-    const players = Storage.getPlayers();
     sel.innerHTML = '<option value="">選択してください</option>'
       + players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
     txt.value = '';
   } else {
+    // 退く選手：現在出場中の相手選手（交代済みは最新の交代選手を表示）
+    replSel.style.display = '';
+    replTxt.style.display = 'none';
+    const oppLineup = (GAME.oppLineup || []).filter(l => l.name).sort((a,b) => a.order - b.order);
+    const oppSubs   = GAME.oppSubs || [];
+    replSel.innerHTML = '<option value="">選択してください</option>'
+      + oppLineup.map(l => {
+          const latestSub = oppSubs
+            .filter(s => s.order === l.order)
+            .sort((a,b) => b.inning - a.inning)[0];
+          const currentName = latestSub ? latestSub.name : l.name;
+          return `<option value="${l.order}">${l.order}番 ${currentName}</option>`;
+        }).join('');
+    if (order) replSel.value = String(order);
+    // 交代選手：テキスト入力
     sel.style.display = 'none';
     txt.style.display = '';
     sel.innerHTML = '';
@@ -538,7 +640,7 @@ function openSubModal(order, team = 'my') {
   }
 
   document.getElementById('subInning').value = '';
-  document.getElementById('subType').value   = '代打';
+  document.getElementById('subType').value   = type;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('subModal')).show();
 }
 
@@ -547,9 +649,14 @@ function saveSub() {
   const type   = document.getElementById('subType').value;
   if (!inning || inning < 1) { showToast('登場イニングを入力してください', 'warning'); return; }
 
+  // 退く選手の打順を確定
+  const replOrder = subTargetOrder || parseInt(document.getElementById('subReplaceOrder').value);
+  if (!replOrder) { showToast('退く選手を選択してください', 'warning'); return; }
+  subTargetOrder = replOrder;
+
   if (subTargetTeam === 'my') {
     const playerId = document.getElementById('subPlayerSel').value;
-    if (!playerId) { showToast('選手を選択してください', 'warning'); return; }
+    if (!playerId) { showToast('交代選手を選択してください', 'warning'); return; }
     if (!GAME.mySubs) GAME.mySubs = [];
     if (GAME.mySubs.find(s => s.order === subTargetOrder && s.inning === inning)) {
       showToast('そのイニングにはすでに登録があります', 'warning'); return;
@@ -571,6 +678,164 @@ function saveSub() {
     renderOppScorecard();
   }
   showToast('代打/代走を登録しました');
+}
+
+// ===== 守備位置入替 =====
+
+function getPlayerCurrentPos(order, team = 'my') {
+  const lineup  = team === 'my' ? (GAME.myLineup  || []) : (GAME.oppLineup  || []);
+  const changes = team === 'my' ? (GAME.myPositionChanges || []) : (GAME.oppPositionChanges || []);
+  const slot    = lineup.find(l => l.order === order);
+  let pos = slot?.position || '';
+  // swapレコードを時系列順に適用
+  const swaps = changes
+    .filter(c => c.orderA === order || c.orderB === order)
+    .sort((a, b) => a.inning - b.inning || (a.seq ?? 0) - (b.seq ?? 0));
+  for (const c of swaps) {
+    pos = c.orderA === order ? c.posB : c.posA;
+  }
+  return pos;
+}
+
+function openPosSwapModal(team = 'my') {
+  posSwapTeam = team;
+  const players  = Storage.getPlayers();
+
+  const buildOpts = (lineup, subs, isMyTeam) =>
+    '<option value="">選択してください</option>' +
+    lineup.map(l => {
+      const latest = (subs || []).filter(s => s.order === l.order).sort((a,b) => b.inning - a.inning)[0];
+      const name   = isMyTeam
+        ? (players.find(p => p.id === (latest?.playerId || l.playerId))?.name || '?')
+        : (latest?.name || l.name || '?');
+      const pos = getPlayerCurrentPos(l.order, team) || '—';
+      return `<option value="${l.order}">${l.order}番 ${name}（${pos}）</option>`;
+    }).join('');
+
+  if (team === 'my') {
+    const lineup = (GAME.myLineup || []).filter(l => l.playerId).sort((a,b) => a.order - b.order);
+    posSwapOpts  = buildOpts(lineup, GAME.mySubs, true);
+  } else {
+    const lineup = (GAME.oppLineup || []).filter(l => l.name).sort((a,b) => a.order - b.order);
+    posSwapOpts  = buildOpts(lineup, GAME.oppSubs, false);
+  }
+
+  const list = document.getElementById('posSwapList');
+  list.innerHTML = '';
+  addPosSwapRow();
+  addPosSwapRow();
+
+  document.getElementById('posSwapInning').value = '';
+  document.getElementById('posSwapPreview').style.display = 'none';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('posSwapModal')).show();
+}
+
+function addPosSwapRow() {
+  const list = document.getElementById('posSwapList');
+  const idx  = list.children.length;
+  const div  = document.createElement('div');
+  div.className = 'd-flex align-items-center gap-2 mb-2';
+  div.innerHTML =
+    `<span class="text-muted small fw-semibold" style="min-width:20px">${idx + 1}</span>` +
+    `<select class="form-select form-select-sm posSwapSelect" onchange="renderPosSwapPreview()">${posSwapOpts}</select>` +
+    (idx >= 2
+      ? `<button type="button" class="btn btn-outline-danger btn-sm px-2" onclick="removePosSwapRow(this)">－</button>`
+      : `<span style="width:38px"></span>`);
+  list.appendChild(div);
+}
+
+function removePosSwapRow(btn) {
+  btn.closest('div').remove();
+  document.querySelectorAll('#posSwapList > div').forEach((row, i) => {
+    row.querySelector('span').textContent = i + 1;
+  });
+  renderPosSwapPreview();
+}
+
+function renderPosSwapPreview() {
+  const orders  = [...document.querySelectorAll('.posSwapSelect')]
+    .map(s => parseInt(s.value)).filter(v => v > 0);
+  const preview = document.getElementById('posSwapPreview');
+  if (orders.length < 2 || new Set(orders).size !== orders.length) {
+    preview.style.display = 'none'; return;
+  }
+  const positions = orders.map(o => getPlayerCurrentPos(o, posSwapTeam) || '?');
+  const parts = orders.map((o, i) => `${o}番 <b>${positions[(i + 1) % orders.length]}</b>`);
+  preview.style.display = '';
+  preview.innerHTML = '入替後: ' + parts.join(' ／ ');
+}
+
+function savePosSwap() {
+  const inning = parseInt(document.getElementById('posSwapInning').value);
+  if (!inning || inning < 1) { showToast('イニングを入力してください', 'warning'); return; }
+
+  const orders = [...document.querySelectorAll('.posSwapSelect')].map(s => parseInt(s.value));
+  if (orders.some(o => isNaN(o) || !o))       { showToast('全ての選手を選択してください', 'warning'); return; }
+  if (new Set(orders).size !== orders.length)  { showToast('同じ選手が重複しています', 'warning'); return; }
+
+  const key = posSwapTeam === 'my' ? 'myPositionChanges' : 'oppPositionChanges';
+  if (!GAME[key]) GAME[key] = [];
+
+  const origPositions = orders.map(o => getPlayerCurrentPos(o, posSwapTeam));
+  const runningPos    = [...origPositions];
+  const groupId       = orders.length >= 3 ? `g_${Date.now()}` : undefined;
+
+  for (let i = 0; i < orders.length - 1; i++) {
+    const entry = {
+      inning,
+      orderA: orders[i],   posA: runningPos[i],
+      orderB: orders[i+1], posB: runningPos[i+1],
+      seq: i,
+      origPosA: origPositions[i],
+      origPosB: origPositions[i+1]
+    };
+    if (groupId) entry.groupId = groupId;
+    GAME[key].push(entry);
+    runningPos[i+1] = runningPos[i];
+  }
+
+  Storage.updateGame(GAME);
+  bootstrap.Modal.getInstance(document.getElementById('posSwapModal')).hide();
+  if (posSwapTeam === 'my') renderScorecard(); else renderOppScorecard();
+  showToast('守備位置を入れ替えました');
+}
+
+function getPosAfterGroup(order, groupId, team) {
+  const lineup  = team === 'my' ? (GAME.myLineup  || []) : (GAME.oppLineup  || []);
+  const changes = team === 'my' ? (GAME.myPositionChanges || []) : (GAME.oppPositionChanges || []);
+  const slot    = lineup.find(l => l.order === order);
+  let pos = slot?.position || '';
+  const groupChanges = changes.filter(c => c.groupId === groupId);
+  const groupInning  = groupChanges[0]?.inning ?? 0;
+  const maxSeq       = Math.max(...groupChanges.map(c => c.seq ?? 0));
+  const swaps = changes
+    .filter(c => c.orderA === order || c.orderB === order)
+    .filter(c => c.inning < groupInning ||
+                 (c.inning === groupInning && (c.seq ?? 0) <= maxSeq))
+    .sort((a, b) => a.inning - b.inning || (a.seq ?? 0) - (b.seq ?? 0));
+  for (const c of swaps) {
+    pos = c.orderA === order ? c.posB : c.posA;
+  }
+  return pos;
+}
+
+function deletePosSwapGroup(groupId, team) {
+  if (!confirm('この守備位置入替（循環）を削除しますか？')) return;
+  const key = team === 'my' ? 'myPositionChanges' : 'oppPositionChanges';
+  GAME[key] = (GAME[key] || []).filter(c => c.groupId !== groupId);
+  Storage.updateGame(GAME);
+  if (team === 'my') renderScorecard(); else renderOppScorecard();
+  showToast('守備位置入替を削除しました');
+}
+
+function deletePosSwap(inning, orderA, orderB, team) {
+  if (!confirm('この守備位置入替を削除しますか？')) return;
+  const key = team === 'my' ? 'myPositionChanges' : 'oppPositionChanges';
+  GAME[key] = (GAME[key] || []).filter(c =>
+    !(c.inning === inning && c.orderA === orderA && c.orderB === orderB)
+  );
+  Storage.updateGame(GAME);
+  if (team === 'my') renderScorecard(); else renderOppScorecard();
 }
 
 function deleteSub(order, inning) {
@@ -689,7 +954,7 @@ function computePitcherStats() {
     if (!pid) return;
     if (!byPitcher[pid]) {
       const pl = players.find(p => p.id === pid);
-      byPitcher[pid] = { name: pl?.name||'?', totalOuts: 0, runs: 0, autoHits: 0, autoBb: 0, autoK: 0 };
+      byPitcher[pid] = { name: pl?.name||'?', totalOuts: 0, runs: 0, autoHits: 0, autoBb: 0, autoK: 0, autoPitches: 0 };
     }
     const next          = changes[i + 1];
     const myEntry       = (ch.entryInning-1)*3 + ch.entryOuts;
@@ -713,19 +978,21 @@ function computePitcherStats() {
     if (['1B','2B','3B','HR'].includes(ab.result)) s.autoHits++;
     if (['BB','HBP'].includes(ab.result))          s.autoBb++;
     if (['K','KL'].includes(ab.result))            s.autoK++;
+    s.autoPitches += (ab.pitches?.length || 0);
   });
 
   return Object.entries(byPitcher).map(([pid, s]) => ({
-    id:       pid, name: s.name,
-    ip:       Stats.formatInnings(s.totalOuts), totalOuts: s.totalOuts,
-    r:        s.runs,
-    hits:     manStats[pid]?.hits ?? s.autoHits,
-    k:        manStats[pid]?.k    ?? s.autoK,
-    bb:       manStats[pid]?.bb   ?? s.autoBb,
-    hitsAuto: s.autoHits,
-    kAuto:    s.autoK,
-    bbAuto:   s.autoBb,
-    dec:      decisions[pid] || '',
+    id:         pid, name: s.name,
+    ip:         Stats.formatInnings(s.totalOuts), totalOuts: s.totalOuts,
+    r:          s.runs,
+    hits:       manStats[pid]?.hits ?? s.autoHits,
+    k:          manStats[pid]?.k    ?? s.autoK,
+    bb:         manStats[pid]?.bb   ?? s.autoBb,
+    pitches:    s.autoPitches,
+    hitsAuto:   s.autoHits,
+    kAuto:      s.autoK,
+    bbAuto:     s.autoBb,
+    dec:        decisions[pid] || '',
   }));
 }
 
@@ -796,6 +1063,7 @@ function renderPitcherAssignment() {
           K:<input type="number" min="0" value="${p.k}" onchange="setPitcherStat('${p.id}','k',this.value)">
           BB:<input type="number" min="0" value="${p.bb}" onchange="setPitcherStat('${p.id}','bb',this.value)">
         </span>
+        ${p.pitches > 0 ? `<span class="badge bg-light text-dark border" style="font-size:0.72rem">${p.pitches}球</span>` : ''}
         <div class="d-flex gap-1">
           <button class="btn btn-xs ${dec==='win'?'btn-success':'btn-outline-secondary'}"
             onclick="setPitcherDecision('${p.id}','win')">勝</button>
@@ -906,6 +1174,41 @@ function completeGame() {
 }
 
 // ===== 打席モーダル =====
+
+function addPitch(type) {
+  currentPitches.push(type);
+  renderPitchDisplay();
+}
+
+function removeLastPitch() {
+  currentPitches.pop();
+  renderPitchDisplay();
+}
+
+function renderPitchDisplay() {
+  const seq = document.getElementById('pitchSequence');
+  const lbl = document.getElementById('pitchCountLabel');
+  if (!seq) return;
+  const colorMap = { B: 'success', K: 'warning', S: 'warning', F: 'warning', X: 'secondary' };
+  const labelMap = { B: 'B', K: '見', S: '空', F: 'F', X: '打' };
+  if (!currentPitches.length) {
+    seq.innerHTML = '';
+    if (lbl) lbl.textContent = '';
+    return;
+  }
+  const darkText = new Set(['K','S','F','X']);
+  seq.innerHTML = currentPitches.map(p =>
+    `<span class="badge bg-${colorMap[p]||'secondary'}${darkText.has(p)?' text-dark':''}">${labelMap[p]||p}</span>`
+  ).join('');
+  let balls = 0, strikes = 0;
+  for (const p of currentPitches) {
+    if (p === 'B') balls++;
+    else if (p === 'F') { if (strikes < 2) strikes++; }
+    else strikes++;
+  }
+  if (lbl) lbl.textContent = `計 ${currentPitches.length}球（${balls}B - ${strikes}S）`;
+}
+
 function buildResultGrid() {
   document.getElementById('resultGrid').innerHTML = RESULT_GROUPS.map(r =>
     `<div class="result-btn ${r.cls}" data-code="${r.code}" onclick="selectResult('${r.code}')">${r.label}</div>`
@@ -918,9 +1221,9 @@ function initDirectionSvg() {
   });
 }
 
-function selectResult(code) {
+function selectResult(code, noPitchAutoAdd = false) {
   selectedResult = code;
-  document.querySelectorAll('.result-btn').forEach(el =>
+  document.querySelectorAll('.result-btn[data-code]').forEach(el =>
     el.classList.toggle('active', el.getAttribute('data-code') === code)
   );
   const needsDir = Stats.NEEDS_DIRECTION.has(code);
@@ -929,6 +1232,26 @@ function selectResult(code) {
     selectedDirection = '';
     document.getElementById('dirLabel').textContent = '未選択';
     document.querySelectorAll('.spray-zone').forEach(z => z.classList.remove('selected-zone'));
+  }
+
+  if (!noPitchAutoAdd) {
+    // 前回の自動追加球を取消し
+    if (lastAutoAddedPitch) {
+      currentPitches.pop();
+      lastAutoAddedPitch = false;
+    }
+    // 打席結果に対応する球を自動追加
+    const pitchAutoMap = {
+      'K':  'S', 'KL': 'K', 'BB': 'B',
+      '1B': 'X', '2B': 'X', '3B': 'X', 'HR': 'X',
+      'GO': 'X', 'FO': 'X', 'LO': 'X', 'GIDP': 'X',
+      'SAC':'X', 'SF': 'X', 'E':  'X', 'FC':  'X', 'HBP': 'X',
+    };
+    if (pitchAutoMap[code]) {
+      currentPitches.push(pitchAutoMap[code]);
+      lastAutoAddedPitch = true;
+    }
+    renderPitchDisplay();
   }
 }
 
@@ -946,9 +1269,11 @@ function changeRbi(delta) {
 }
 
 function openAtbatModal(abId, team) {
-  selectedResult    = '';
-  selectedDirection = '';
-  currentRbi        = 0;
+  selectedResult     = '';
+  selectedDirection  = '';
+  currentRbi         = 0;
+  currentPitches     = [];
+  lastAutoAddedPitch = false;
   document.getElementById('rbiVal').textContent = '0';
   document.getElementById('abNote').value       = '';
   document.getElementById('abId').value         = abId || '';
@@ -957,6 +1282,7 @@ function openAtbatModal(abId, team) {
   document.querySelectorAll('.result-btn').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.spray-zone').forEach(el => el.classList.remove('selected-zone'));
   document.getElementById('dirLabel').textContent = '未選択';
+  renderPitchDisplay();
 
   const isMyTeam = team === 'my';
 
@@ -1004,16 +1330,18 @@ function openAtbatModal(abId, team) {
   if (abId) {
     const ab = (GAME.atBats||[]).find(a => a.id === abId);
     if (ab) {
-      sel.value  = ab.playerId || ab.playerName || '';
-      currentRbi = ab.rbi || 0;
+      sel.value      = ab.playerId || ab.playerName || '';
+      currentRbi     = ab.rbi || 0;
+      currentPitches = ab.pitches ? [...ab.pitches] : [];
       document.getElementById('rbiVal').textContent = currentRbi;
       document.getElementById('abNote').value = ab.note || '';
-      if (ab.result)    selectResult(ab.result);
+      if (ab.result)    selectResult(ab.result, true);
       if (ab.direction) selectDirection(ab.direction);
+      renderPitchDisplay();
     }
   }
 
-  new bootstrap.Modal(document.getElementById('abModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('abModal')).show();
 }
 
 function saveAtBat() {
@@ -1043,6 +1371,7 @@ function saveAtBat() {
     result:     selectedResult,
     direction:  selectedDirection || null,
     rbi:        currentRbi,
+    pitches:    currentPitches.length ? [...currentPitches] : undefined,
     note:       document.getElementById('abNote').value.trim(),
     inning:     currentInning,
     order:      currentOrder,
@@ -1071,6 +1400,8 @@ function saveAtBat() {
   bootstrap.Modal.getInstance(document.getElementById('abModal')).hide();
   if (isMyTeam) renderScorecard(); else renderOppScorecard();
   buildScoreboard();
+  renderPitcherAssignment();
+  renderOppPitcherAssignment();
   currentOrder  = null;
   currentInning = null;
 }
@@ -1100,6 +1431,8 @@ function deleteCurrentAtBat() {
   bootstrap.Modal.getInstance(document.getElementById('abModal')).hide();
   if (isMyTeam) renderScorecard(); else renderOppScorecard();
   buildScoreboard();
+  renderPitcherAssignment();
+  renderOppPitcherAssignment();
   currentOrder  = null;
   currentInning = null;
   showToast('削除しました', 'secondary');
@@ -1121,10 +1454,11 @@ function computeOppPitcherStats() {
   (GAME.atBats || []).filter(ab => ab.isMyTeam && ab.inning).forEach(ab => {
     const ch = getPitcherForInning(changes, ab.inning);
     if (!ch) return;
-    if (!autoStats[ch.id]) autoStats[ch.id] = { hits: 0, bb: 0, k: 0 };
+    if (!autoStats[ch.id]) autoStats[ch.id] = { hits: 0, bb: 0, k: 0, pitches: 0 };
     if (['1B','2B','3B','HR'].includes(ab.result)) autoStats[ch.id].hits++;
     if (['BB','HBP'].includes(ab.result))          autoStats[ch.id].bb++;
     if (['K','KL'].includes(ab.result))            autoStats[ch.id].k++;
+    autoStats[ch.id].pitches += (ab.pitches?.length || 0);
   });
 
   return changes.map((ch, i) => {
@@ -1140,7 +1474,7 @@ function computeOppPitcherStats() {
       runs += (myScore[inn - 1] || 0);
     }
     const man  = manStats[ch.id] || {};
-    const auto = autoStats[ch.id] || { hits: 0, bb: 0, k: 0 };
+    const auto = autoStats[ch.id] || { hits: 0, bb: 0, k: 0, pitches: 0 };
     return {
       id:        ch.id,
       name:      ch.name || '(未設定)',
@@ -1150,6 +1484,7 @@ function computeOppPitcherStats() {
       hits:      man.hits ?? auto.hits,
       k:         man.k    ?? auto.k,
       bb:        man.bb   ?? auto.bb,
+      pitches:   auto.pitches,
       hitsAuto:  auto.hits,
       kAuto:     auto.k,
       bbAuto:    auto.bb,
@@ -1218,6 +1553,7 @@ function renderOppPitcherAssignment() {
           K:<input type="number" min="0" value="${p.k}" onchange="setOppPitcherStat('${p.id}','k',this.value)">
           BB:<input type="number" min="0" value="${p.bb}" onchange="setOppPitcherStat('${p.id}','bb',this.value)">
         </span>
+        ${p.pitches > 0 ? `<span class="badge bg-light text-dark border" style="font-size:0.72rem">${p.pitches}球</span>` : ''}
       </div>`;
     });
     html += `<div class="mt-2">
@@ -1286,10 +1622,10 @@ function updateHomeAwayDisplay() {
   if (!btn) return;
   if (GAME.isHome) {
     btn.textContent = '後攻（ホーム）';
-    btn.className   = 'btn btn-sm btn-outline-primary';
+    btn.className   = 'btn btn-xs btn-outline-primary';
   } else {
     btn.textContent = '先攻（アウェイ）';
-    btn.className   = 'btn btn-sm btn-outline-warning';
+    btn.className   = 'btn btn-xs btn-outline-warning';
   }
 }
 

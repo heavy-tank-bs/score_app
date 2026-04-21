@@ -459,6 +459,12 @@ body {
 }
 .btn-xs { font-size: 0.7rem !important; padding: 1px 5px !important; line-height: 1.4 !important; }
 
+/* ===== Pitch buttons ===== */
+.result-btn.pitch-strike { border-color: #ffc107; color: #856404; }
+.result-btn.pitch-strike:hover { background: #fff3cd; }
+.result-btn.pitch-ball   { border-color: #198754; color: #198754; }
+.result-btn.pitch-ball:hover   { background: #d1e7dd; }
+
 /* ===== Multi at-bat cells ===== */
 .sc-cell.sc-multi { height: auto; min-height: 38px; padding: 1px; vertical-align: top; }
 .sc-ab-entry {

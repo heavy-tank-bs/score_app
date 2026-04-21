@@ -48,32 +48,43 @@
   <!-- ===== STEP 2: 試合記録 ===== -->
   <div id="stepRecord" style="display:none">
 
-    <!-- Game Info Header -->
+    <!-- Score Hero -->
     <div class="card mb-2">
-      <div class="card-body py-2 px-3">
+      <div class="card-body py-3 px-3">
+        <!-- チーム名 + スコア -->
         <div class="d-flex align-items-center justify-content-between">
-          <div class="fw-semibold">
-            <span id="recTeamName"></span>
-            <span class="mx-1 text-muted">vs</span>
-            <span id="recOpponent"></span>
+          <div class="text-start" style="flex:1;min-width:0">
+            <div class="text-muted" style="font-size:0.68rem">自チーム</div>
+            <div class="fw-bold text-truncate" style="font-size:0.95rem" id="recTeamName"></div>
           </div>
+          <div class="text-center px-3">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+              <span class="fw-bold" id="recMyScore" style="font-size:2.4rem;line-height:1;min-width:1.4ch;text-align:center;color:var(--primary)">0</span>
+              <span class="text-muted" style="font-size:1.1rem">—</span>
+              <span class="fw-bold" id="recOppScore" style="font-size:2.4rem;line-height:1;min-width:1.4ch;text-align:center">0</span>
+            </div>
+            <div class="mt-1">
+              <span id="recInningBadge" style="display:inline-block;background:#f4a261;color:#212529;font-size:0.72rem;font-weight:700;padding:2px 10px;border-radius:20px">1回・試合中</span>
+            </div>
+          </div>
+          <div class="text-end" style="flex:1;min-width:0">
+            <div class="text-muted" style="font-size:0.68rem">相手チーム</div>
+            <div class="fw-bold text-truncate" style="font-size:0.95rem" id="recOpponent"></div>
+          </div>
+        </div>
+        <!-- 操作行 -->
+        <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top flex-wrap gap-2">
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="fs-4 fw-bold" id="recScore">0-0</span>
-            <span class="text-muted small" id="recDate"></span>
+            <span class="text-muted" style="font-size:0.75rem" id="recDate"></span>
             <button class="btn btn-xs btn-outline-secondary" onclick="editLineup()">
               <i class="bi bi-pencil me-1"></i>スタメン編集
             </button>
+            <button class="btn btn-xs" id="homeAwayBtn" onclick="toggleHomeAway()">後攻（ホーム）</button>
           </div>
-        </div>
-        <!-- 先攻/後攻 + タイマー -->
-        <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top flex-wrap gap-2">
-          <button class="btn btn-sm" id="homeAwayBtn" onclick="toggleHomeAway()">
-            後攻（ホーム）
-          </button>
           <div class="d-flex align-items-center gap-2">
             <span id="timerDisplay"
               class="fw-bold font-monospace"
-              style="font-size:1.15rem;min-width:84px;text-align:right;letter-spacing:0.04em">
+              style="font-size:1rem;min-width:76px;text-align:right;letter-spacing:0.04em">
               00:00:00
             </span>
             <button class="btn btn-sm btn-outline-success" id="timerBtn" onclick="toggleTimer()" title="スタート/ストップ">
@@ -84,31 +95,6 @@
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Scorecard Grid (My Team) -->
-    <div class="card mb-2">
-      <div class="card-header d-flex align-items-center justify-content-between py-2">
-        <span><i class="bi bi-table me-1"></i>打席記録（自チーム）</span>
-        <div class="d-flex align-items-center gap-2">
-          <button class="inn-btn" onclick="changeInnings(-1)" title="イニングを減らす">－</button>
-          <span id="inningCountDisplay" class="fw-bold" style="min-width:32px;text-align:center">7回</span>
-          <button class="inn-btn" onclick="changeInnings(1)" title="イニングを増やす">＋</button>
-        </div>
-      </div>
-      <div class="card-body p-0" style="overflow-x:auto">
-        <table id="scorecardTable" class="scorecard-table"></table>
-      </div>
-    </div>
-
-    <!-- Scorecard Grid (Opponent Team) -->
-    <div class="card mb-2">
-      <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:#495057">
-        <span><i class="bi bi-table me-1"></i>打席記録（相手：<span id="recOpponentSc"></span>）</span>
-      </div>
-      <div class="card-body p-0" style="overflow-x:auto">
-        <table id="oppScorecardTable" class="scorecard-table"></table>
       </div>
     </div>
 
@@ -135,6 +121,35 @@
         <button class="btn btn-sm btn-primary mt-2" onclick="saveScore()">
           <i class="bi bi-save me-1"></i>スコア保存
         </button>
+      </div>
+    </div>
+
+    <!-- Scorecard Grid (My Team) -->
+    <div class="card mb-2">
+      <div class="card-header d-flex align-items-center justify-content-between py-2">
+        <span><i class="bi bi-table me-1"></i>打席記録（自チーム）</span>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-outline-light fw-semibold" onclick="openSubModal(null,'my')">選手交代</button>
+          <button class="btn btn-sm btn-outline-light fw-semibold" onclick="openPosSwapModal('my')">守備入替</button>
+          <span id="inningCountDisplay" style="display:none"></span>
+        </div>
+      </div>
+      <div class="card-body p-0" style="overflow-x:auto">
+        <table id="scorecardTable" class="scorecard-table"></table>
+      </div>
+    </div>
+
+    <!-- Scorecard Grid (Opponent Team) -->
+    <div class="card mb-2">
+      <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:#495057">
+        <span><i class="bi bi-table me-1"></i>打席記録（相手：<span id="recOpponentSc"></span>）</span>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-outline-light fw-semibold" onclick="openSubModal(null,'opp')">選手交代</button>
+          <button class="btn btn-sm btn-outline-light fw-semibold" onclick="openPosSwapModal('opp')">守備入替</button>
+        </div>
+      </div>
+      <div class="card-body p-0" style="overflow-x:auto">
+        <table id="oppScorecardTable" class="scorecard-table"></table>
       </div>
     </div>
 
@@ -176,6 +191,24 @@
           <select id="abBatter" class="form-select">
             <option value="">選手を選択...</option>
           </select>
+        </div>
+
+        <!-- Pitch sequence (above result) -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label fw-semibold mb-0">球数記録 <small class="text-muted fw-normal">（任意）</small></label>
+            <button type="button" class="btn btn-xs btn-outline-secondary" onclick="removeLastPitch()">
+              <i class="bi bi-backspace"></i> 取消
+            </button>
+          </div>
+          <div class="result-grid mb-2">
+            <div class="result-btn pitch-strike" onclick="addPitch('K')">見逃し</div>
+            <div class="result-btn pitch-strike" onclick="addPitch('S')">空振り</div>
+            <div class="result-btn pitch-strike" onclick="addPitch('F')">ファール</div>
+            <div class="result-btn pitch-ball"   onclick="addPitch('B')">ボール</div>
+          </div>
+          <div id="pitchSequence" class="d-flex flex-wrap gap-1 mb-1" style="min-height:18px"></div>
+          <div id="pitchCountLabel" class="text-muted small"></div>
         </div>
 
         <!-- Result -->
@@ -285,6 +318,13 @@
       </div>
       <div class="modal-body">
         <div class="mb-3">
+          <label class="form-label fw-semibold">退く選手</label>
+          <select id="subReplaceOrder" class="form-select">
+            <option value="">選択してください</option>
+          </select>
+          <input id="subReplaceText" type="text" class="form-control" placeholder="選手名または打順（例: 3）" style="display:none">
+        </div>
+        <div class="mb-3">
           <label class="form-label fw-semibold">区分</label>
           <select id="subType" class="form-select">
             <option value="代打">代打</option>
@@ -293,7 +333,7 @@
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label fw-semibold">選手</label>
+          <label class="form-label fw-semibold">交代選手</label>
           <select id="subPlayerSel" class="form-select">
             <option value="">選択してください</option>
           </select>
@@ -307,6 +347,34 @@
       <div class="modal-footer py-2">
         <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
         <button class="btn btn-primary btn-sm" onclick="saveSub()">
+          <i class="bi bi-save me-1"></i>登録
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Position Swap Modal ===== -->
+<div class="modal fade" id="posSwapModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background:var(--primary);color:#fff">
+        <h6 class="modal-title mb-0">守備位置入替</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">イニング（回）</label>
+          <input id="posSwapInning" type="number" class="form-control" min="1" max="15" placeholder="例: 3">
+        </div>
+        <div class="mb-2 fw-semibold small">入替選手（循環順に選択）</div>
+        <div id="posSwapList"></div>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-1 mb-3" onclick="addPosSwapRow()">＋ 選手を追加</button>
+        <div id="posSwapPreview" class="alert alert-info py-1 px-2 small mb-0" style="display:none"></div>
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick="savePosSwap()">
           <i class="bi bi-save me-1"></i>登録
         </button>
       </div>
